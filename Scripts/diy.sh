@@ -231,6 +231,31 @@ fi
 echo "[diy] 文件内置完成"
 
 # ---------------------------------------------------------------
+# 4c. 升级 golang 工具链（解决 frp 编译失败）
+#
+# 失败现象（compile log）：
+#   go: ../../go.mod requires go >= 1.24.0 (running go 1.23.12; GOTOOLCHAIN=local)
+#
+# padavanonly 6.6 fork 自带的 golang feed 是 1.23.x，但 kenzok8/jell 仓库
+# 里的 frp 0.66.0（被 luci-app-frpc 依赖）要求 go >= 1.24.0。
+# GOTOOLCHAIN=local 又禁止 Go 在线下载工具链。
+#
+# 修复：从 openwrt/packages 主仓库 sparse-checkout 拉最新 lang/golang
+# 覆盖 feed 里的旧版，重装 golang。OpenWRT-CI 早就用这套方法解决了。
+# ---------------------------------------------------------------
+echo "================================================================"
+echo "[diy] 升级 golang 工具链"
+echo "================================================================"
+WRT_DIR=$(pwd)
+rm -rf feeds/packages/lang/golang
+git clone https://github.com/openwrt/packages --depth=1 --filter=blob:none --sparse /tmp/openwrt-packages
+cd /tmp/openwrt-packages && git sparse-checkout set lang/golang
+cp -r /tmp/openwrt-packages/lang/golang "$WRT_DIR/feeds/packages/lang/golang"
+cd "$WRT_DIR"
+./scripts/feeds install golang
+echo "[diy] golang feed 已替换为 openwrt/packages 最新版"
+
+# ---------------------------------------------------------------
 # 5. sx_7981r128 设备注入
 # ---------------------------------------------------------------
 echo "================================================================"
