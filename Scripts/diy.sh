@@ -186,6 +186,51 @@ if [ -f ./package/luci-app-store/Makefile ]; then
 fi
 
 # ---------------------------------------------------------------
+# 4b. CSS 颜色修复 & uci-defaults 文件内置
+# ---------------------------------------------------------------
+find ./ -name "cascade.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+find ./ -name "dark.css" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+find ./ -name "cascade.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+find ./ -name "dark.less" -exec sed -i 's/#5e72e4/#31A1A1/g; s/#483d8b/#31A1A1/g' {} \;
+echo "[diy] CSS 颜色修复完成"
+
+install -Dm755 "${GITHUB_WORKSPACE}/Scripts/99_ttyd-nopass.sh"  "package/base-files/files/etc/uci-defaults/99_ttyd-nopass"
+install -Dm755 "${GITHUB_WORKSPACE}/Scripts/99_set_argon_primary" "package/base-files/files/etc/uci-defaults/99_set_argon_primary"
+install -Dm755 "${GITHUB_WORKSPACE}/Scripts/99_dropbear_setup.sh" "package/base-files/files/etc/uci-defaults/99_dropbear_setup"
+install -Dm755 "${GITHUB_WORKSPACE}/Scripts/991_set-network.sh"  "package/base-files/files/etc/uci-defaults/991_set-network"
+echo "[diy] uci-defaults 脚本已内置"
+
+# 99-distfeeds.conf（依赖 default-settings 包，存在才注入）
+if [ -d "./package/emortal/default-settings" ]; then
+    install -Dm755 "${GITHUB_WORKSPACE}/Scripts/99-distfeeds.conf" "package/emortal/default-settings/files/99-distfeeds.conf"
+    sed -i '/define Package\/default-settings\/install/a \
+\t$(INSTALL_DIR) $(1)/etc\n\t$(INSTALL_DATA) ./files/99-distfeeds.conf $(1)/etc/99-distfeeds.conf' \
+        package/emortal/default-settings/Makefile
+    sed -i "/exit 0/i\\
+[ -f '/etc/99-distfeeds.conf' ] && mv '/etc/99-distfeeds.conf' '/etc/opkg/distfeeds.conf'\n\
+sed -ri '/check_signature/s@^[^#]@#\&@' /etc/opkg.conf\n" \
+        "package/emortal/default-settings/files/99-default-settings"
+    echo "[diy] 99-distfeeds.conf 已注入 default-settings"
+fi
+
+# ddns-go.init 替换
+if [ -f "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init" ]; then
+    cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.init" "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init"
+    chmod +x "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init"
+    echo "[diy] ddns-go.init 已替换"
+fi
+
+# rust Makefile 修复（ci-llvm=false + patch 补充 Host/Patch define）
+RUST_FILE=$(find ./feeds/packages/ -maxdepth 3 -type f -wholename "*/rust/Makefile")
+if [ -f "$RUST_FILE" ]; then
+    sed -i 's/ci-llvm=true/ci-llvm=false/g' "$RUST_FILE"
+    patch "$RUST_FILE" "${GITHUB_WORKSPACE}/Scripts/rust-makefile.patch" 2>/dev/null \
+        && echo "[diy] rust-makefile.patch 已应用" \
+        || echo "[diy] rust-makefile.patch 跳过（已应用或不适用）"
+fi
+echo "[diy] 文件内置完成"
+
+# ---------------------------------------------------------------
 # 5. sx_7981r128 设备注入
 # ---------------------------------------------------------------
 echo "================================================================"
