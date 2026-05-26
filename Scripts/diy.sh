@@ -256,7 +256,8 @@ define Device/sx_7981r128
   DEVICE_MODEL := 7981R128
   DEVICE_DTS := mt7981b-sx-7981r128
   DEVICE_DTS_DIR := ../dts
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-usb3
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-usb3 \
+                     kmod-sfp kmod-i2c-gpio
   SUPPORTED_DEVICES := sx,7981r128 mediatek,mt7981-spim-snand-7981r128
   KERNEL_IN_UBI := 1
   UBOOTENV_IN_UBI := 1
@@ -329,6 +330,16 @@ if [ -n "$wan_zone_idx" ]; then
     uci add_list firewall.@zone[$wan_zone_idx].network=wan2_6
     uci commit firewall
 fi
+
+# LED: green:lan (GPIO 8) 绑到 2.5G 物理口 lan2
+# 实机点灯测试确认 green:lan 物理位置在 2.5G 网口旁
+uci add system led
+uci set system.@led[-1].name='led_lan2'
+uci set system.@led[-1].sysfs='green:lan'
+uci set system.@led[-1].trigger='netdev'
+uci set system.@led[-1].dev='lan2'
+uci set system.@led[-1].mode='link tx rx'
+uci commit system
 
 exit 0
 UCI_EOF
