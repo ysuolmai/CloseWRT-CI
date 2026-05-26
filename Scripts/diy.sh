@@ -1,38 +1,207 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT
 #
-# diy.sh — 自定义设备注入 + 设备白名单
-# 由 WRT-CORE.yml 的 Custom Settings step 调用（Config 写入 .config 之后，make defconfig 之前）
-# 工作目录为 wrt/
+# diy.sh — 设备白名单 + 包管理 + 设备注入
+# 由 WRT-CORE.yml 的 Custom Settings step 调用
+# 执行顺序：cat Config/*.txt >> .config → Settings.sh → diy.sh → make defconfig
+# 工作目录：wrt/
 
 echo "================================================================"
-echo "[diy] 自定义设备注入开始"
+echo "[diy] 开始"
 echo "================================================================"
 
 # ---------------------------------------------------------------
-# 0. MTK 设备白名单 — 只保留指定设备，其余从 .config 删除
+# 0. MTK 设备白名单 — 只保留指定设备
 # ---------------------------------------------------------------
 mtk_keep="\(sx_7981r128\|nokia_ea0326gmp\|cmcc_rax3000m\)=y$"
 sed -i "/^CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/{
     /$mtk_keep/!d
 }" ./.config
-echo "[diy] .config 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc_rax3000m）"
+echo "[diy] 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc_rax3000m）"
 
 # ---------------------------------------------------------------
-# 1. 复制 DTS（kernel 6.6 padavanonly 版本）
+# 1. 移除不需要的包
 # ---------------------------------------------------------------
+keywords_to_delete=(
+    "easytier" "qbittorrent" "vnt" "kmod-wireguard"
+)
+for keyword in "${keywords_to_delete[@]}"; do
+    sed -i "/$keyword/d" ./.config
+done
+echo "[diy] 已从 .config 移除: ${keywords_to_delete[*]}"
+
+# ---------------------------------------------------------------
+# 2. 安装额外软件包（Packages.sh 未覆盖的部分）
+#    工作目录为 wrt/，clone 目标为 package/$REPO_NAME
+# ---------------------------------------------------------------
+UPDATE_PACKAGE() {
+    local PKG_NAME=$1
+    local PKG_REPO=$2
+    local PKG_BRANCH=$3
+    local PKG_SPECIAL=$4
+
+    read -ra PKG_NAMES <<< "$PKG_NAME"
+    for NAME in "${PKG_NAMES[@]}"; do
+        find feeds/luci/ feeds/packages/ package/ -maxdepth 3 -type d \
+            \( -name "$NAME" -o -name "luci-*-$NAME" \) -exec rm -rf {} + 2>/dev/null
+    done
+
+    if [[ $PKG_REPO == http* ]]; then
+        local REPO_NAME=$(basename "$PKG_REPO" .git)
+    else
+        local REPO_NAME=$(echo "$PKG_REPO" | cut -d '/' -f 2)
+        PKG_REPO="https://github.com/$PKG_REPO.git"
+    fi
+
+    if ! git clone --depth=1 --single-branch --branch "$PKG_BRANCH" "$PKG_REPO" "package/$REPO_NAME"; then
+        echo "错误: 克隆失败 $PKG_REPO"
+        return 1
+    fi
+
+    case "$PKG_SPECIAL" in
+        "pkg")
+            for NAME in "${PKG_NAMES[@]}"; do
+                find "./package/$REPO_NAME" -maxdepth 3 -type d \
+                    \( -name "$NAME" -o -name "luci-*-$NAME" \) -print0 | \
+                    xargs -0 -I {} cp -rf {} ./package/ 2>/dev/null
+            done
+            rm -rf "./package/$REPO_NAME/"
+            ;;
+        "name")
+            rm -rf "./package/$PKG_NAME"
+            mv -f "./package/$REPO_NAME" "./package/$PKG_NAME"
+            ;;
+    esac
+}
+
+UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "main"
+UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "apk"
+UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
+UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
+
+# 从 kenzok8/jell 批量拉取 Packages.sh 未覆盖的包
+UPDATE_PACKAGE "smartdns luci-app-smartdns \
+    taskd luci-lib-xterm luci-lib-taskd \
+    luci-app-store quickstart luci-app-quickstart luci-app-istorex \
+    luci-app-cloudflarespeedtest \
+    netdata luci-app-netdata \
+    lucky luci-app-lucky \
+    frp" "kenzok8/jell" "main" "pkg"
+
+# ---------------------------------------------------------------
+# 3. .config 追加包配置
+# ---------------------------------------------------------------
+provided_config_lines=(
+    # 翻墙 / DNS
+    "CONFIG_PACKAGE_luci-app-homeproxy=y"
+    "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-mosdns=y"
+    "CONFIG_PACKAGE_luci-app-passwall=y"
+    "CONFIG_PACKAGE_luci-app-passwall2=y"
+    "CONFIG_PACKAGE_luci-app-openclash=y"
+    "CONFIG_PACKAGE_smartdns=y"
+    "CONFIG_PACKAGE_luci-app-smartdns=y"
+    "CONFIG_PACKAGE_luci-i18n-smartdns-zh-cn=y"
+    # AdGuardHome
+    "CONFIG_PACKAGE_luci-app-adguardhome=y"
+    "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
+    # VPN
+    "CONFIG_PACKAGE_luci-app-tailscale=y"
+    "CONFIG_PACKAGE_luci-app-zerotier=y"
+    "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
+    # 内网穿透 / DDNS
+    "CONFIG_PACKAGE_luci-app-frpc=y"
+    "CONFIG_PACKAGE_luci-app-ddns-go=y"
+    "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
+    # 系统工具
+    "CONFIG_PACKAGE_luci-app-poweroff=y"
+    "CONFIG_PACKAGE_luci-i18n-poweroff-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-ttyd=y"
+    "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y"
+    "CONFIG_PACKAGE_ttyd=y"
+    "CONFIG_PACKAGE_luci-app-cpufreq=y"
+    "CONFIG_PACKAGE_luci-i18n-cpufreq-zh-cn=y"
+    "CONFIG_PACKAGE_luci-app-filetransfer=y"
+    "CONFIG_PACKAGE_luci-app-vlmcsd=y"
+    "CONFIG_PACKAGE_luci-app-netspeedtest=y"
+    "CONFIG_PACKAGE_luci-app-quickfile=y"
+    "CONFIG_PACKAGE_luci-app-openlist2=y"
+    "CONFIG_PACKAGE_luci-i18n-openlist2-zh-cn=y"
+    # 存储 / 文件共享
+    "CONFIG_PACKAGE_luci-app-cifs-mount=y"
+    "CONFIG_PACKAGE_kmod-fs-cifs=y"
+    "CONFIG_PACKAGE_cifsmount=y"
+    # 监控
+    "CONFIG_PACKAGE_luci-app-bandix=y"
+    "CONFIG_PACKAGE_netdata=y"
+    "CONFIG_PACKAGE_luci-app-netdata=y"
+    # 应用商店
+    "CONFIG_PACKAGE_luci-app-store=y"
+    "CONFIG_PACKAGE_luci-app-quickstart=y"
+    "CONFIG_PACKAGE_luci-app-istorex=y"
+    # 其他
+    "CONFIG_PACKAGE_luci-app-gecoosac=y"
+    "CONFIG_PACKAGE_luci-app-argon-config=y"
+    "CONFIG_PACKAGE_luci-theme-shadcn=y"
+    "CONFIG_PACKAGE_luci-app-cloudflarespeedtest=y"
+    "CONFIG_PACKAGE_lucky=y"
+    "CONFIG_PACKAGE_luci-app-lucky=y"
+    "CONFIG_PACKAGE_luci-app-diskman=y"
+    "CONFIG_PACKAGE_luci-app-netspeedtest=y"
+    # opkg
+    "CONFIG_OPKG_USE_CURL=y"
+    "CONFIG_PACKAGE_opkg=y"
+    "CONFIG_USE_APK=n"
+)
+for line in "${provided_config_lines[@]}"; do
+    echo "$line" >> .config
+done
+echo "[diy] provided_config_lines 已写入 .config"
+
+# ---------------------------------------------------------------
+# 4. 通用 Makefile 修复
+# ---------------------------------------------------------------
+if ! grep -q "CMAKE_POLICY_VERSION_MINIMUM" include/cmake.mk 2>/dev/null; then
+    echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
+fi
+
+find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
+
+if [ -f ./package/v2ray-geodata/Makefile ]; then
+    sed -i 's/VER)-\$(PKG_RELEASE)/VER)-r\$(PKG_RELEASE)/g' ./package/v2ray-geodata/Makefile
+fi
+if [ -f ./package/luci-lib-taskd/Makefile ]; then
+    sed -i 's/>=1\.0\.3-1/>=1\.0\.3-r1/g' ./package/luci-lib-taskd/Makefile
+fi
+if [ -f ./package/luci-app-openclash/Makefile ]; then
+    sed -i '/^PKG_VERSION:=/a PKG_RELEASE:=1' ./package/luci-app-openclash/Makefile
+fi
+if [ -f ./package/luci-app-quickstart/Makefile ]; then
+    sed -i -E 's/PKG_VERSION:=([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)/PKG_VERSION:=\1\nPKG_RELEASE:=\2/' \
+        ./package/luci-app-quickstart/Makefile
+fi
+if [ -f ./package/luci-app-store/Makefile ]; then
+    sed -i -E 's/PKG_VERSION:=([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)/PKG_VERSION:=\1\nPKG_RELEASE:=\2/' \
+        ./package/luci-app-store/Makefile
+fi
+
+# ---------------------------------------------------------------
+# 5. sx_7981r128 设备注入
+# ---------------------------------------------------------------
+echo "================================================================"
+echo "[diy] sx_7981r128 设备注入"
+echo "================================================================"
+
+# 5.1 复制 DTS
 DTS_SRC="$GITHUB_WORKSPACE/Scripts/dts/mt7981b-sx-7981r128.dts"
-DTS_DST="./target/linux/mediatek/dts/mt7981b-sx-7981r128.dts"
 if [ -f "$DTS_SRC" ]; then
-    cp -f "$DTS_SRC" "$DTS_DST"
+    cp -f "$DTS_SRC" "./target/linux/mediatek/dts/mt7981b-sx-7981r128.dts"
     echo "[diy] DTS 已复制"
 else
     echo "[diy] 警告：DTS 源文件不存在，跳过"
 fi
 
-# ---------------------------------------------------------------
-# 2. 注入 filogic.mk 设备条目
-# ---------------------------------------------------------------
+# 5.2 注入 filogic.mk 设备条目
 FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
 if [ -f "$FILOGIC_MK" ] && ! grep -q '^define Device/sx_7981r128' "$FILOGIC_MK"; then
     cat >> "$FILOGIC_MK" << 'FILOGIC_EOF'
@@ -60,11 +229,7 @@ else
     echo "[diy] filogic.mk 设备条目已存在，跳过"
 fi
 
-# ---------------------------------------------------------------
-# 3. 注入 board.d/02_network
-#    lan1（千兆）→ LAN，lan2（2.5G EN8801SC）→ WAN
-#    eth1（SFP 笼）通过 uci-defaults 配置为 wan2
-# ---------------------------------------------------------------
+# 5.3 注入 board.d/02_network
 BOARD_NETWORK="./target/linux/mediatek/filogic/base-files/etc/board.d/02_network"
 if [ -f "$BOARD_NETWORK" ] && ! grep -q 'sx,7981r128' "$BOARD_NETWORK"; then
     awk '
@@ -81,29 +246,22 @@ else
     echo "[diy] 02_network 已存在或文件不存在，跳过"
 fi
 
-# ---------------------------------------------------------------
-# 4. uci-defaults 首次启动初始化脚本
-#    - 启用 WiFi（radio0/radio1）
-#    - 补全 wan6（2.5G 主WAN IPv6）
-#    - 添加 wan2/wan2_6（SFP 笼 IPv4/IPv6）并加入防火墙 WAN zone
-# ---------------------------------------------------------------
+# 5.4 uci-defaults 首次启动初始化
 UCI_DEFAULTS_DIR="./package/base-files/files/etc/uci-defaults"
 mkdir -p "$UCI_DEFAULTS_DIR"
 cat > "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh" << 'UCI_EOF'
 #!/bin/sh
 [ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = "sx,7981r128" ] || exit 0
 
-# --- WiFi：启用双频射频 ---
+# WiFi 开机启用
 uci set wireless.radio0.disabled=0
 uci set wireless.radio1.disabled=0
 uci commit wireless
 
-# --- 网络接口 ---
-# wan6：2.5G 主WAN IPv6（ucidef 只创建 wan，需手动补 wan6）
+# wan6（2.5G 主WAN IPv6）+ wan2/wan2_6（SFP 笼）
 uci set network.wan6=interface
 uci set network.wan6.device=lan2
 uci set network.wan6.proto=dhcpv6
-# wan2/wan2_6：SFP 笼 IPv4/IPv6
 uci set network.wan2=interface
 uci set network.wan2.device=eth1
 uci set network.wan2.proto=dhcp
@@ -112,13 +270,12 @@ uci set network.wan2_6.device=eth1
 uci set network.wan2_6.proto=dhcpv6
 uci commit network
 
-# --- 防火墙：wan2/wan2_6 加入 WAN zone ---
+# wan2/wan2_6 加入防火墙 WAN zone
 wan_zone_idx=""
 i=0
 while uci get "firewall.@zone[$i]" >/dev/null 2>&1; do
     if [ "$(uci get firewall.@zone[$i].name 2>/dev/null)" = "wan" ]; then
-        wan_zone_idx=$i
-        break
+        wan_zone_idx=$i; break
     fi
     i=$((i + 1))
 done
@@ -134,5 +291,5 @@ chmod +x "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh"
 echo "[diy] uci-defaults 98_sx_7981r128_init.sh 已注入"
 
 echo "================================================================"
-echo "[diy] sx_7981r128 设备注入完成"
+echo "[diy] 完成"
 echo "================================================================"
