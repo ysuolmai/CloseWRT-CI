@@ -92,6 +92,3 @@ if [ -f "$RUST_FILE" ]; then
 
 	cd $PKG_PATH && echo "rust has been fixed!"
 fi
-
-#设备支持注入（sx_7981r128 等自定义设备）
-$GITHUB_WORKSPACE/Scripts/diy.sh

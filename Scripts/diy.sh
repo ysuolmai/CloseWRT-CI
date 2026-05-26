@@ -2,10 +2,7 @@
 # SPDX-License-Identifier: MIT
 #
 # diy.sh — sx_7981r128 设备支持注入
-# 由 Scripts/Handles.sh 末尾调用，工作目录为 wrt/package/，
-# 本脚本统一使用 $WRT_ROOT 绝对路径操作 target/ 树。
-
-WRT_ROOT="$GITHUB_WORKSPACE/wrt"
+# 由 WRT-CORE.yml 的 "Custom DIY" step 调用，工作目录为 wrt/
 
 echo "================================================================"
 echo "[diy] sx_7981r128 设备注入开始"
@@ -15,10 +12,10 @@ echo "================================================================"
 # 1. 复制 DTS（kernel 6.6 padavanonly 版本）
 # ---------------------------------------------------------------
 DTS_SRC="$GITHUB_WORKSPACE/Scripts/dts/mt7981b-sx-7981r128.dts"
-DTS_DST="$WRT_ROOT/target/linux/mediatek/dts/mt7981b-sx-7981r128.dts"
+DTS_DST="./target/linux/mediatek/dts/mt7981b-sx-7981r128.dts"
 if [ -f "$DTS_SRC" ]; then
     cp -f "$DTS_SRC" "$DTS_DST"
-    echo "[diy] DTS 已复制到 $DTS_DST"
+    echo "[diy] DTS 已复制"
 else
     echo "[diy] 警告：DTS 源文件不存在，跳过"
 fi
@@ -26,7 +23,7 @@ fi
 # ---------------------------------------------------------------
 # 2. 注入 filogic.mk 设备条目
 # ---------------------------------------------------------------
-FILOGIC_MK="$WRT_ROOT/target/linux/mediatek/image/filogic.mk"
+FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
 if [ -f "$FILOGIC_MK" ] && ! grep -q '^define Device/sx_7981r128' "$FILOGIC_MK"; then
     cat >> "$FILOGIC_MK" << 'FILOGIC_EOF'
 
@@ -58,7 +55,7 @@ fi
 #    lan1（千兆）→ LAN，lan2（2.5G EN8801SC）→ WAN
 #    eth1（SFP 笼）通过 uci-defaults 配置为 wan2
 # ---------------------------------------------------------------
-BOARD_NETWORK="$WRT_ROOT/target/linux/mediatek/filogic/base-files/etc/board.d/02_network"
+BOARD_NETWORK="./target/linux/mediatek/filogic/base-files/etc/board.d/02_network"
 if [ -f "$BOARD_NETWORK" ] && ! grep -q 'sx,7981r128' "$BOARD_NETWORK"; then
     awk '
         !done && /^\t\*\)$/ {
@@ -80,7 +77,7 @@ fi
 #    - 补全 wan6（2.5G 主WAN IPv6）
 #    - 添加 wan2/wan2_6（SFP 笼 IPv4/IPv6）并加入防火墙 WAN zone
 # ---------------------------------------------------------------
-UCI_DEFAULTS_DIR="$WRT_ROOT/package/base-files/files/etc/uci-defaults"
+UCI_DEFAULTS_DIR="./package/base-files/files/etc/uci-defaults"
 mkdir -p "$UCI_DEFAULTS_DIR"
 cat > "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh" << 'UCI_EOF'
 #!/bin/sh
