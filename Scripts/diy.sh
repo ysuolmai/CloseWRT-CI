@@ -2,26 +2,21 @@
 # SPDX-License-Identifier: MIT
 #
 # diy.sh — 自定义设备注入 + 设备白名单
-# 由 WRT-CORE.yml 的 "Custom DIY" step 调用，工作目录为 wrt/
-# 注意：本脚本在 Config/*.txt 被写入 .config 之前运行，
-#       白名单直接过滤 Config 源文件，而不是 .config。
+# 由 WRT-CORE.yml 的 Custom Settings step 调用（Config 写入 .config 之后，make defconfig 之前）
+# 工作目录为 wrt/
 
 echo "================================================================"
 echo "[diy] 自定义设备注入开始"
 echo "================================================================"
 
 # ---------------------------------------------------------------
-# 0. MTK 设备白名单 — 只保留指定设备，其余从 Config/MT7981.txt 删除
-#    本脚本先于 Custom Settings 运行，过滤的是 Config 文件本身
+# 0. MTK 设备白名单 — 只保留指定设备，其余从 .config 删除
 # ---------------------------------------------------------------
-MTK_CONFIG="$GITHUB_WORKSPACE/Config/MT7981.txt"
 mtk_keep="\(sx_7981r128\|nokia_ea0326gmp\|cmcc_rax3000m\)=y$"
-if [ -f "$MTK_CONFIG" ]; then
-    sed -i "/^CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/{
-        /$mtk_keep/!d
-    }" "$MTK_CONFIG"
-    echo "[diy] MT7981.txt 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc_rax3000m）"
-fi
+sed -i "/^CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/{
+    /$mtk_keep/!d
+}" ./.config
+echo "[diy] .config 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc_rax3000m）"
 
 # ---------------------------------------------------------------
 # 1. 复制 DTS（kernel 6.6 padavanonly 版本）

@@ -161,12 +161,6 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Custom DIY
-        run: |
-          cd ./wrt/
-
-          $GITHUB_WORKSPACE/Scripts/diy.sh
-
       - name: Custom Packages
         run: |
           cd ./wrt/package/
@@ -183,6 +177,8 @@ jobs:
           else
             cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
           fi
+
+          $GITHUB_WORKSPACE/Scripts/diy.sh
 
           $GITHUB_WORKSPACE/Scripts/Settings.sh
 
