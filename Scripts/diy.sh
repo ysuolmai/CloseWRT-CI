@@ -256,6 +256,21 @@ cd "$WRT_DIR"
 echo "[diy] golang feed 已替换为 openwrt/packages 最新版"
 
 # ---------------------------------------------------------------
+# 4d. cmake 4.0 兼容（移植自 OpenWRT-CI）
+#
+# 部分 ImmortalWrt 分支已用 cmake 4.0+ 作为 host cmake，但许多 C/C++ 包
+# CMakeLists.txt 还写 cmake_minimum_required(VERSION 3.5)，cmake 4.0 默认拒绝。
+# 加 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 让 cmake 容忍老 policy。
+# 注：仅在 include/cmake.mk 存在且尚未含此选项时追加，幂等无害。
+# ---------------------------------------------------------------
+if [ -f include/cmake.mk ] && ! grep -q "CMAKE_POLICY_VERSION_MINIMUM" include/cmake.mk; then
+    echo 'CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5' >> include/cmake.mk
+    echo "[diy] cmake.mk 已追加 CMAKE_POLICY_VERSION_MINIMUM=3.5"
+else
+    echo "[diy] cmake.mk 已含 CMAKE_POLICY_VERSION_MINIMUM 或文件不存在，跳过"
+fi
+
+# ---------------------------------------------------------------
 # 5. sx_7981r128 设备注入
 # ---------------------------------------------------------------
 echo "================================================================"
