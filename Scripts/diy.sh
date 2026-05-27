@@ -80,8 +80,7 @@ UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
 UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
 
 # 从 kenzok8/jell 批量拉取 Packages.sh 未覆盖的包
-UPDATE_PACKAGE "smartdns luci-app-smartdns \
-    taskd luci-lib-xterm luci-lib-taskd \
+UPDATE_PACKAGE "taskd luci-lib-xterm luci-lib-taskd \
     luci-app-store quickstart luci-app-quickstart luci-app-istorex \
     luci-app-cloudflarespeedtest \
     netdata luci-app-netdata \
@@ -99,9 +98,7 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-passwall=y"
     "CONFIG_PACKAGE_luci-app-passwall2=y"
     "CONFIG_PACKAGE_luci-app-openclash=y"
-    "CONFIG_PACKAGE_smartdns=y"
-    "CONFIG_PACKAGE_luci-app-smartdns=y"
-    "CONFIG_PACKAGE_luci-i18n-smartdns-zh-cn=y"
+
     # AdGuardHome
     "CONFIG_PACKAGE_luci-app-adguardhome=y"
     "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
