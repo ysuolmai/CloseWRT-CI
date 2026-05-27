@@ -167,20 +167,32 @@ find ./ -name "getifaddr.c" -exec sed -i 's/return 1;/return 0;/g' {} \;
 if [ -f ./package/v2ray-geodata/Makefile ]; then
     sed -i 's/VER)-\$(PKG_RELEASE)/VER)-r\$(PKG_RELEASE)/g' ./package/v2ray-geodata/Makefile
 fi
-if [ -f ./package/luci-lib-taskd/Makefile ]; then
-    sed -i 's/>=1\.0\.3-1/>=1\.0\.3-r1/g' ./package/luci-lib-taskd/Makefile
-fi
 if [ -f ./package/luci-app-openclash/Makefile ]; then
     sed -i '/^PKG_VERSION:=/a PKG_RELEASE:=1' ./package/luci-app-openclash/Makefile
 fi
-if [ -f ./package/luci-app-quickstart/Makefile ]; then
-    sed -i -E 's/PKG_VERSION:=([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)/PKG_VERSION:=\1\nPKG_RELEASE:=\2/' \
-        ./package/luci-app-quickstart/Makefile
-fi
-if [ -f ./package/luci-app-store/Makefile ]; then
-    sed -i -E 's/PKG_VERSION:=([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)/PKG_VERSION:=\1\nPKG_RELEASE:=\2/' \
-        ./package/luci-app-store/Makefile
-fi
+
+# ---------------------------------------------------------------
+# 4e. 批量修复 kenzok8/jell 包的 PKG_VERSION 格式
+#
+# 问题：kenzok8/jell 的包用 PKG_VERSION:=X.Y.Z-N（版本带 '-N' 后缀）
+# padavanonly 21.02 的旧编译体系对此格式处理有误，导致：
+#   - 包编译后在 opkg 索引里的版本字符串不正确
+#   - 或直接编译失败（build system hash check 报错）
+# 表现：package/install 阶段 opkg 报 "cannot find dependency luci-lib-taskd (>= 1.0.19)"
+#
+# 修复：将 PKG_VERSION:=X.Y.Z-N 拆为 PKG_VERSION:=X.Y.Z + PKG_RELEASE:=N
+# （OpenWRT-CI 用 VIKINGYFY/immortalwrt 新编译体系，不受此影响）
+# ---------------------------------------------------------------
+echo "[diy] 批量修复 package/ 中 PKG_VERSION:=X.Y.Z-N 格式..."
+_pkgver_fixed=0
+while IFS= read -r _mk; do
+    if grep -qE '^PKG_VERSION:=[0-9]+\.[0-9]+(\.[0-9]+)?-[0-9]+$' "$_mk" && \
+       ! grep -q '^PKG_RELEASE:=' "$_mk"; then
+        sed -i -E 's/^(PKG_VERSION:=[0-9]+\.[0-9]+(\.[0-9]+)?)-([0-9]+)$/\1\nPKG_RELEASE:=\3/' "$_mk"
+        _pkgver_fixed=$((_pkgver_fixed + 1))
+    fi
+done < <(find ./package/ -maxdepth 2 -name "Makefile" 2>/dev/null)
+echo "[diy] PKG_VERSION 格式修复完成，共处理 $_pkgver_fixed 个文件"
 
 # ---------------------------------------------------------------
 # 4b. CSS 颜色修复 & uci-defaults 文件内置
