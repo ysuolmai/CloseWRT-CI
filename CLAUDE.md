@@ -67,13 +67,15 @@ Combine Disks          ← easimon/maximize-build-space，合并根+/mnt → ~55
 → Release Firmware
 ```
 
-### Combine Disks 说明
-使用 `easimon/maximize-build-space@master` 合并磁盘：
-- `build-mount-path: /mnt` — **必须**，编译目录在 `/mnt/build_wrt`，不写则合并后空间给了 workspace，/mnt 还是小盘
-- `swap-size-mb: 1024` — 添加 1GB swap
-- `root-reserve-mb: 10240` — **根分区预留 10GB**，给 apt 和 build 工具链安装留足空间（1024 太小，action 会把根分区几乎全部打成 loop 文件，导致 apt update 失败）
-- `temp-reserve-mb: 100` — /mnt 原始分区预留
-- 可用空间：合并后约 55GB
+### Free Disk Space 说明
+手动删除 runner 预装无用工具，替代 `easimon/maximize-build-space`：
+
+**为何不用 easimon/maximize-build-space**：新 runner (ubuntu-24.04 v20260518+) 根分区已有 145GB，action 的 `root-reserve-mb` 参数存在 bug，无论设多少都会把根分区吃光（测试过 1024 和 10240 均如此），导致 apt update 报 "No space left on device"。
+
+**当前方案**：
+- 删除 dotnet / Android SDK / GHC / CodeQL / Docker 镜像，释放 ~20GB
+- 编译直接在 `$GITHUB_WORKSPACE/wrt`（根分区），可用约 **110GB**
+- 不再 symlink 到 /mnt
 
 ### Scripts/diy.sh 各节职责
 | 节 | 内容 |
