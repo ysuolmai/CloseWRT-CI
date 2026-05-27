@@ -71,7 +71,8 @@ Combine Disks          ← easimon/maximize-build-space，合并根+/mnt → ~55
 使用 `easimon/maximize-build-space@master` 合并磁盘：
 - `build-mount-path: /mnt` — **必须**，编译目录在 `/mnt/build_wrt`，不写则合并后空间给了 workspace，/mnt 还是小盘
 - `swap-size-mb: 1024` — 添加 1GB swap
-- `root-reserve-mb: 1024` / `temp-reserve-mb: 100` — 根分区预留
+- `root-reserve-mb: 10240` — **根分区预留 10GB**，给 apt 和 build 工具链安装留足空间（1024 太小，action 会把根分区几乎全部打成 loop 文件，导致 apt update 失败）
+- `temp-reserve-mb: 100` — /mnt 原始分区预留
 - 可用空间：合并后约 55GB
 
 ### Scripts/diy.sh 各节职责

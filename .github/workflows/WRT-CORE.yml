@@ -72,7 +72,7 @@ jobs:
         with:
           swap-size-mb: 1024
           temp-reserve-mb: 100
-          root-reserve-mb: 1024
+          root-reserve-mb: 10240
           build-mount-path: /mnt
 
       - name: Initialization Environment
