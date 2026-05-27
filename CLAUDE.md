@@ -86,7 +86,7 @@ Combine Disks          ← easimon/maximize-build-space，合并根+/mnt → ~55
 | 3 | provided_config_lines 写入 .config |
 | 4 | 通用 Makefile 修复（cmake、getifaddr、v2ray-geodata 等） |
 | 4b | CSS 颜色修复 + uci-defaults 文件内置（ttyd、argon、dropbear、网络等） |
-| 5 | sx_7981r128 设备注入（DTS、filogic.mk、02_network、uci-defaults） |
+| 5 | sx_7981r128 设备注入（内核 DTS、U-Boot patch 生成、uboot-mediatek/Makefile、filogic.mk 含 FIP artifacts、02_network、uci-defaults） |
 
 ### Scripts/dts/mt7981b-sx-7981r128.dts（kernel 6.6 版本）
 - 使用 `mt7981.dtsi`（**不是** mt7981b.dtsi）
@@ -94,12 +94,21 @@ Combine Disks          ← easimon/maximize-build-space，合并根+/mnt → ~55
 - 显式 memory 节点: `<0 0x40000000 0 0x20000000>` = 512MB
 - GPIO 头文件需显式 include
 
+### Scripts/uboot/ — U-Boot 支持文件（与 OpenWRT-CI 共用）
+| 文件 | 用途 |
+|------|------|
+| `mt7981-sx-7981r128.dts` | U-Boot 专用 DTS（GMAC0 + MT7531 reset GPIO 39，2500base-x fixed-link）|
+| `mt7981_sx_7981r128_defconfig` | U-Boot defconfig（DDR3-1866，SPIM-NAND，UBI env）|
+| `sx_7981r128_env` | U-Boot defenvs（启动菜单、TFTP recovery、FIP/BL2 烧写命令）|
+
+diy.sh 步骤 5.1b 会将以上三个文件打成 `450-add-sx-7981r128.patch` 放入 `package/boot/uboot-mediatek/patches/`，并在 `package/boot/uboot-mediatek/Makefile` 中注入 `mt7981_sx_7981r128` 构建目标。
+
 ## FIP 状态
 
-**当前：仅产出 `sysupgrade.bin`，不产出 FIP。**
+**当前：产出 `sysupgrade.itb`（内核+rootfs FIT）+ `bl31-uboot.fip`（U-Boot FIP）+ `preloader.bin`（BL2）**
 
-原因与 OpenWRT-CI 相同：无专属 U-Boot defconfig。
-待 OpenWRT-CI 侧写好并验证后，CloseWRT-CI 同步跟进。
+- DDR 颗粒：SK Hynix H5TQ4G63EFR-RDC（DDR3-1866，512MB）已确认
+- U-Boot DTS：使用 `mt7981.dtsi`（同 kernel 6.6 风格）
 
 ## 内置脚本文件（Scripts/ 目录）
 

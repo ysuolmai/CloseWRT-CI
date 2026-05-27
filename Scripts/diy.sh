@@ -274,16 +274,90 @@ echo "================================================================"
 echo "[diy] sx_7981r128 设备注入"
 echo "================================================================"
 
-# 5.1 复制 DTS
+# 5.1 复制内核 DTS
 DTS_SRC="$GITHUB_WORKSPACE/Scripts/dts/mt7981b-sx-7981r128.dts"
 if [ -f "$DTS_SRC" ]; then
     cp -f "$DTS_SRC" "./target/linux/mediatek/dts/mt7981b-sx-7981r128.dts"
-    echo "[diy] DTS 已复制"
+    echo "[diy] 内核 DTS 已复制"
 else
-    echo "[diy] 警告：DTS 源文件不存在，跳过"
+    echo "[diy] 警告：内核 DTS 源文件不存在，跳过"
 fi
 
-# 5.2 注入 filogic.mk 设备条目
+# 5.1b 注入 U-Boot 支持（DTS + defconfig + defenvs → patch，修改 uboot-mediatek/Makefile）
+SX7981_UBOOT_DIR="$GITHUB_WORKSPACE/Scripts/uboot"
+SX7981_UBOOT_PATCHES="./package/boot/uboot-mediatek/patches"
+SX7981_UBOOT_MK="./package/boot/uboot-mediatek/Makefile"
+
+if [ -d "$SX7981_UBOOT_DIR" ] && [ -d "$SX7981_UBOOT_PATCHES" ]; then
+    python3 - "$SX7981_UBOOT_DIR" "$SX7981_UBOOT_PATCHES/450-add-sx-7981r128.patch" << 'PYEOF'
+import sys
+
+uboot_dir = sys.argv[1]
+patch_out  = sys.argv[2]
+
+files = [
+    ('arch/arm/dts/mt7981-sx-7981r128.dts', 'mt7981-sx-7981r128.dts'),
+    ('configs/mt7981_sx_7981r128_defconfig',  'mt7981_sx_7981r128_defconfig'),
+    ('defenvs/sx_7981r128_env',               'sx_7981r128_env'),
+]
+
+content = ""
+for dest, src in files:
+    with open(f"{uboot_dir}/{src}") as f:
+        lines = f.readlines()
+    n = len(lines)
+    content += f"--- /dev/null\n+++ b/{dest}\n@@ -0,0 +1,{n} @@\n"
+    for line in lines:
+        content += "+" + line
+    content += "\n"
+
+with open(patch_out, 'w') as f:
+    f.write(content)
+print(f'[diy]   U-Boot patch 已生成: {patch_out}')
+PYEOF
+
+    if [ -f "$SX7981_UBOOT_MK" ] && ! grep -q 'U-Boot/mt7981_sx_7981r128' "$SX7981_UBOOT_MK"; then
+        python3 - "$SX7981_UBOOT_MK" << 'PYEOF'
+import sys
+filename = sys.argv[1]
+with open(filename) as f:
+    content = f.read()
+
+insert = """
+define U-Boot/mt7981_sx_7981r128
+  NAME:=SX 7981R128
+  BUILD_SUBTARGET:=filogic
+  BUILD_DEVICES:=sx_7981r128
+  UBOOT_CONFIG:=mt7981_sx_7981r128
+  UBOOT_IMAGE:=u-boot.fip
+  BL2_BOOTDEV:=spim-nand
+  BL2_SOC:=mt7981
+  BL2_DDRTYPE:=ddr3-1866
+  DEPENDS:=+trusted-firmware-a-mt7981-spim-nand-ddr3-1866
+endef
+UBOOT_TARGETS += mt7981_sx_7981r128
+
+"""
+
+marker = '$(eval $(call BuildPackage/U-Boot))'
+if marker in content:
+    content = content.replace(marker, insert + marker, 1)
+    with open(filename, 'w') as f:
+        f.write(content)
+    print('[diy]   uboot-mediatek/Makefile 已注入 mt7981_sx_7981r128')
+else:
+    print('[diy] 警告: 未找到 BuildPackage/U-Boot marker，跳过')
+    sys.exit(0)
+PYEOF
+        echo "[diy]   uboot-mediatek/Makefile 已修改"
+    else
+        echo "[diy]   uboot-mediatek/Makefile 已存在条目，跳过"
+    fi
+else
+    echo "[diy] Scripts/uboot 或 uboot-mediatek/patches 不存在，跳过 U-Boot 注入"
+fi
+
+# 5.2 注入 filogic.mk 设备条目（含 FIP artifacts）
 FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
 if [ -f "$FILOGIC_MK" ] && ! grep -q '^define Device/sx_7981r128' "$FILOGIC_MK"; then
     cat >> "$FILOGIC_MK" << 'FILOGIC_EOF'
@@ -302,12 +376,21 @@ define Device/sx_7981r128
   PAGESIZE := 2048
   IMAGE_SIZE := 65536k
   UBINIZE_OPTS := -E 5
-  IMAGES := sysupgrade.bin
-  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  ARTIFACTS := bl31-uboot.fip preloader.bin
+  ARTIFACT/bl31-uboot.fip := mt7981-bl31-uboot sx_7981r128
+  ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3-1866
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+      fit lzma $(KDIR)/image-$(firstword $(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+  IMAGES := sysupgrade.itb
+  IMAGE/sysupgrade.itb := append-kernel | \
+      fit gzip $(KDIR)/image-$(firstword $(DEVICE_DTS)).dtb external-static-with-rootfs | \
+      append-metadata
 endef
 TARGET_DEVICES += sx_7981r128
 FILOGIC_EOF
-    echo "[diy] filogic.mk 设备条目已注入"
+    echo "[diy] filogic.mk 设备条目（含 FIP artifacts）已注入"
 else
     echo "[diy] filogic.mk 设备条目已存在，跳过"
 fi
