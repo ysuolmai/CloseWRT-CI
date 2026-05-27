@@ -48,20 +48,38 @@ eth1  → SFP 笼 → wan2（次要，uci-defaults 配置）
 
 ## 关键脚本说明
 
-### 执行顺序（WRT-CORE.yml Custom Settings step）
+### WRT-CORE.yml 完整 job 执行顺序
 ```
-cat Config/*.txt >> .config
-→ Scripts/Settings.sh
-→ Scripts/diy.sh          ← 最后执行，改动优先级最高
-→ make defconfig
+Combine Disks          ← easimon/maximize-build-space，合并根+/mnt → ~55GB，挂载到 /mnt
+→ Initialization Environment
+→ Clone Code
+→ Check Caches / Update Caches
+→ Update Feeds
+→ Custom Packages       ← Scripts/Packages.sh + Scripts/Handles.sh
+→ Custom Settings:
+    cat Config/*.txt >> .config
+    → Scripts/Settings.sh
+    → Scripts/diy.sh    ← 最后执行，改动优先级最高
+    → make defconfig
+→ Download Packages
+→ Compile Firmware
+→ Package Firmware
+→ Release Firmware
 ```
+
+### Combine Disks 说明
+使用 `easimon/maximize-build-space@master` 合并磁盘：
+- `build-mount-path: /mnt` — **必须**，编译目录在 `/mnt/build_wrt`，不写则合并后空间给了 workspace，/mnt 还是小盘
+- `swap-size-mb: 1024` — 添加 1GB swap
+- `root-reserve-mb: 1024` / `temp-reserve-mb: 100` — 根分区预留
+- 可用空间：合并后约 55GB
 
 ### Scripts/diy.sh 各节职责
 | 节 | 内容 |
 |----|------|
 | 0 | MTK 设备白名单（只保留 3 个设备） |
 | 1 | 移除不需要的包（easytier、qbittorrent、vnt、kmod-wireguard） |
-| 2 | UPDATE_PACKAGE 安装额外包（poweroff、adguardhome、bandix、jell 批量等） |
+| 2 | UPDATE_PACKAGE 安装额外包（poweroff、adguardhome、bandix、jell 批量等；smartdns 已移除，kenzok8/jell Makefile URL 损坏） |
 | 3 | provided_config_lines 写入 .config |
 | 4 | 通用 Makefile 修复（cmake、getifaddr、v2ray-geodata 等） |
 | 4b | CSS 颜色修复 + uci-defaults 文件内置（ttyd、argon、dropbear、网络等） |
