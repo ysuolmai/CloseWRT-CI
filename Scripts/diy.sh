@@ -80,11 +80,12 @@ UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
 UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
 
 # 从 kenzok8/jell 批量拉取 Packages.sh 未覆盖的包
-UPDATE_PACKAGE "taskd luci-lib-xterm luci-lib-taskd \
-    luci-app-store quickstart luci-app-quickstart luci-app-istorex \
-    luci-app-cloudflarespeedtest \
+# 注：故意不要 LinkEase/iStore 那套（taskd / luci-lib-taskd / luci-lib-xterm /
+# luci-app-store / quickstart / luci-app-quickstart / luci-app-istorex）
+# 它们靠 luci.mk 从 git 历史推版本号，UPDATE_PACKAGE 用 cp 复制会丢 git
+# → 版本变 "0" 又满足不了下游约束，且本固件场景用不上 iStore 商店
+UPDATE_PACKAGE "luci-app-cloudflarespeedtest \
     netdata luci-app-netdata \
-    lucky luci-app-lucky \
     frp" "kenzok8/jell" "main" "pkg"
 
 # ---------------------------------------------------------------
@@ -132,17 +133,11 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-bandix=y"
     "CONFIG_PACKAGE_netdata=y"
     "CONFIG_PACKAGE_luci-app-netdata=y"
-    # 应用商店
-    "CONFIG_PACKAGE_luci-app-store=y"
-    "CONFIG_PACKAGE_luci-app-quickstart=y"
-    "CONFIG_PACKAGE_luci-app-istorex=y"
     # 其他
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
     "CONFIG_PACKAGE_luci-theme-shadcn=y"
     "CONFIG_PACKAGE_luci-app-cloudflarespeedtest=y"
-    "CONFIG_PACKAGE_lucky=y"
-    "CONFIG_PACKAGE_luci-app-lucky=y"
     "CONFIG_PACKAGE_luci-app-diskman=y"
     "CONFIG_PACKAGE_luci-app-netspeedtest=y"
     # opkg
@@ -172,26 +167,7 @@ if [ -f ./package/luci-app-openclash/Makefile ]; then
 fi
 
 # ---------------------------------------------------------------
-# 4e. 为 luci-lib-taskd 强制注入 PKG_VERSION
-#
-# 问题：kenzok8/jell 的 luci-lib-taskd Makefile 没有显式 PKG_VERSION，
-#   靠 include $(TOPDIR)/feeds/luci/luci.mk 从 git 历史自动生成。
-#   但 diy.sh 用 cp -rf 复制包 → 丢了 git 历史 → 版本默认成 "0"
-#   → 打包成 luci-lib-taskd_0_all.ipk
-#   → 不满足 luci-app-store (>=1.0.19) / luci-app-istorex (>=1.0.15)
-#   → package/install 阶段 opkg 报 cannot find dependency
-#
-# 修复：在 include luci.mk 之前显式声明 PKG_VERSION:=1.0.19, PKG_RELEASE:=1
-# （这个版本号比上游 LinkEase/taskd 当前最新版还高一点，安全满足约束）
-# ---------------------------------------------------------------
-_taskd_mk=./package/luci-lib-taskd/Makefile
-if [ -f "$_taskd_mk" ] && ! grep -q '^PKG_VERSION:=' "$_taskd_mk"; then
-    sed -i '/^include \$(TOPDIR)\/feeds\/luci\/luci\.mk/i PKG_VERSION:=1.0.19\nPKG_RELEASE:=1\n' "$_taskd_mk"
-    echo "[diy] luci-lib-taskd Makefile 已注入 PKG_VERSION:=1.0.19 / PKG_RELEASE:=1"
-fi
-
-# ---------------------------------------------------------------
-# 4f. 批量修复 kenzok8/jell 包的 PKG_VERSION 格式（X.Y.Z-N → X.Y.Z + RELEASE）
+# 4e. 批量修复 kenzok8/jell 包的 PKG_VERSION 格式（X.Y.Z-N → X.Y.Z + RELEASE）
 # 表现：opkg 版本比较失败，依赖不满足
 # 注：只处理「有 X.Y.Z-N 格式但缺 PKG_RELEASE」的，已声明 PKG_RELEASE 的跳过
 # ---------------------------------------------------------------
