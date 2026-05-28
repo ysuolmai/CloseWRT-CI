@@ -172,16 +172,28 @@ if [ -f ./package/luci-app-openclash/Makefile ]; then
 fi
 
 # ---------------------------------------------------------------
-# 4e. 批量修复 kenzok8/jell 包的 PKG_VERSION 格式
+# 4e. 为 luci-lib-taskd 强制注入 PKG_VERSION
 #
-# 问题：kenzok8/jell 的包用 PKG_VERSION:=X.Y.Z-N（版本带 '-N' 后缀）
-# padavanonly 21.02 的旧编译体系对此格式处理有误，导致：
-#   - 包编译后在 opkg 索引里的版本字符串不正确
-#   - 或直接编译失败（build system hash check 报错）
-# 表现：package/install 阶段 opkg 报 "cannot find dependency luci-lib-taskd (>= 1.0.19)"
+# 问题：kenzok8/jell 的 luci-lib-taskd Makefile 没有显式 PKG_VERSION，
+#   靠 include $(TOPDIR)/feeds/luci/luci.mk 从 git 历史自动生成。
+#   但 diy.sh 用 cp -rf 复制包 → 丢了 git 历史 → 版本默认成 "0"
+#   → 打包成 luci-lib-taskd_0_all.ipk
+#   → 不满足 luci-app-store (>=1.0.19) / luci-app-istorex (>=1.0.15)
+#   → package/install 阶段 opkg 报 cannot find dependency
 #
-# 修复：将 PKG_VERSION:=X.Y.Z-N 拆为 PKG_VERSION:=X.Y.Z + PKG_RELEASE:=N
-# （OpenWRT-CI 用 VIKINGYFY/immortalwrt 新编译体系，不受此影响）
+# 修复：在 include luci.mk 之前显式声明 PKG_VERSION:=1.0.19, PKG_RELEASE:=1
+# （这个版本号比上游 LinkEase/taskd 当前最新版还高一点，安全满足约束）
+# ---------------------------------------------------------------
+_taskd_mk=./package/luci-lib-taskd/Makefile
+if [ -f "$_taskd_mk" ] && ! grep -q '^PKG_VERSION:=' "$_taskd_mk"; then
+    sed -i '/^include \$(TOPDIR)\/feeds\/luci\/luci\.mk/i PKG_VERSION:=1.0.19\nPKG_RELEASE:=1\n' "$_taskd_mk"
+    echo "[diy] luci-lib-taskd Makefile 已注入 PKG_VERSION:=1.0.19 / PKG_RELEASE:=1"
+fi
+
+# ---------------------------------------------------------------
+# 4f. 批量修复 kenzok8/jell 包的 PKG_VERSION 格式（X.Y.Z-N → X.Y.Z + RELEASE）
+# 表现：opkg 版本比较失败，依赖不满足
+# 注：只处理「有 X.Y.Z-N 格式但缺 PKG_RELEASE」的，已声明 PKG_RELEASE 的跳过
 # ---------------------------------------------------------------
 echo "[diy] 批量修复 package/ 中 PKG_VERSION:=X.Y.Z-N 格式..."
 _pkgver_fixed=0
