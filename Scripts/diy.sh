@@ -92,26 +92,24 @@ UPDATE_PACKAGE "luci-app-cloudflarespeedtest \
 # 3. .config 追加包配置
 # ---------------------------------------------------------------
 provided_config_lines=(
-    # 翻墙 / DNS
+    # 翻墙 / DNS（只留 homeproxy，sing-box 后端够用）
     "CONFIG_PACKAGE_luci-app-homeproxy=y"
     "CONFIG_PACKAGE_luci-i18n-homeproxy-zh-cn=y"
-    "CONFIG_PACKAGE_luci-app-mosdns=y"
-    "CONFIG_PACKAGE_luci-app-passwall=y"
-    "CONFIG_PACKAGE_luci-app-passwall2=y"
-    "CONFIG_PACKAGE_luci-app-openclash=y"
 
-    # AdGuardHome
+    # AdGuardHome（DNS 过滤 + 拦广告）
     "CONFIG_PACKAGE_luci-app-adguardhome=y"
     "CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=y"
-    # VPN
-    "CONFIG_PACKAGE_luci-app-tailscale=y"
+
+    # VPN（zerotier 比 tailscale 轻一些，选一个就够）
     "CONFIG_PACKAGE_luci-app-zerotier=y"
     "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
+
     # 内网穿透 / DDNS
     "CONFIG_PACKAGE_luci-app-frpc=y"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
-    # 系统工具
+
+    # 系统基础工具
     "CONFIG_PACKAGE_luci-app-poweroff=y"
     "CONFIG_PACKAGE_luci-i18n-poweroff-zh-cn=y"
     "CONFIG_PACKAGE_luci-app-ttyd=y"
@@ -122,29 +120,30 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-filetransfer=y"
     "CONFIG_PACKAGE_luci-app-vlmcsd=y"
     "CONFIG_PACKAGE_luci-app-netspeedtest=y"
-    "CONFIG_PACKAGE_luci-app-quickfile=y"
-    "CONFIG_PACKAGE_luci-app-openlist2=y"
-    "CONFIG_PACKAGE_luci-i18n-openlist2-zh-cn=y"
-    # 存储 / 文件共享
-    "CONFIG_PACKAGE_luci-app-cifs-mount=y"
-    "CONFIG_PACKAGE_kmod-fs-cifs=y"
-    "CONFIG_PACKAGE_cifsmount=y"
-    # 监控
+
+    # 监控（轻量流量统计）
     "CONFIG_PACKAGE_luci-app-bandix=y"
-    "CONFIG_PACKAGE_netdata=y"
-    "CONFIG_PACKAGE_luci-app-netdata=y"
-    # 其他
+
+    # 主题 / 默认配置
     "CONFIG_PACKAGE_luci-app-gecoosac=y"
     "CONFIG_PACKAGE_luci-app-argon-config=y"
     "CONFIG_PACKAGE_luci-theme-shadcn=y"
-    "CONFIG_PACKAGE_luci-app-cloudflarespeedtest=y"
-    "CONFIG_PACKAGE_luci-app-diskman=y"
-    "CONFIG_PACKAGE_luci-app-netspeedtest=y"
+
     # opkg
     "CONFIG_OPKG_USE_CURL=y"
     "CONFIG_PACKAGE_opkg=y"
     "CONFIG_USE_APK=n"
 )
+
+# 故意不装的"EMMC 才合适"的重型应用（NAND 设备装不下也用不上）：
+#   passwall / passwall2 / openclash（一个 homeproxy 已够，省 40+ MB）
+#   mosdns（adguardhome 已覆盖 DNS 过滤）
+#   openlist2 / quickfile（文件管理器，NAND 没空间）
+#   cifs-mount + kmod-fs-cifs + cifsmount（不挂 SMB 共享）
+#   netdata + luci-app-netdata（监控太重，bandix 够看）
+#   diskman（无硬盘可管）
+#   cloudflarespeedtest（要用就 opkg install）
+#   tailscale（zerotier 二选一）
 for line in "${provided_config_lines[@]}"; do
     echo "$line" >> .config
 done
