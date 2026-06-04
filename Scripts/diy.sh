@@ -82,14 +82,7 @@ UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
 UPDATE_PACKAGE "luci-theme-shadcn" "ysuolmai/luci-theme-shadcn" "main"
 
 
-# 从 kenzok8/jell 批量拉取 Packages.sh 未覆盖的包
-# 注：故意不要 LinkEase/iStore 那套（taskd / luci-lib-taskd / luci-lib-xterm /
-# luci-app-store / quickstart / luci-app-quickstart / luci-app-istorex）
-# 它们靠 luci.mk 从 git 历史推版本号，UPDATE_PACKAGE 用 cp 复制会丢 git
-# → 版本变 "0" 又满足不了下游约束，且本固件场景用不上 iStore 商店
-UPDATE_PACKAGE "luci-app-cloudflarespeedtest \
-    netdata luci-app-netdata \
-    frp" "kenzok8/jell" "main" "pkg"
+
 
 #speedtest
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
