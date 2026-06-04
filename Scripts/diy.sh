@@ -78,6 +78,8 @@ UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "main"
 UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "apk"
 UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
 UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
+UPDATE_PACKAGE "luci-theme-shadcn" "ysuolmai/luci-theme-shadcn" "main"
+
 
 # 从 kenzok8/jell 批量拉取 Packages.sh 未覆盖的包
 # 注：故意不要 LinkEase/iStore 那套（taskd / luci-lib-taskd / luci-lib-xterm /
