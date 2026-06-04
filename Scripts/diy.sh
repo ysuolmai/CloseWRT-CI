@@ -23,7 +23,8 @@ echo "[diy] 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc
 # 1. 移除不需要的包
 # ---------------------------------------------------------------
 keywords_to_delete=(
-    "easytier" "qbittorrent" "vnt" "kmod-wireguard"
+    "easytier" "qbittorrent" "vnt" "kmod-wireguard" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "luci-app-advancedplus" "mihomo" "nikki"
+    "smartdns" "kucat" "bootstrap" "luci-app-partexp" "luci-app-upnp"
 )
 for keyword in "${keywords_to_delete[@]}"; do
     sed -i "/$keyword/d" ./.config
@@ -90,6 +91,19 @@ UPDATE_PACKAGE "luci-app-cloudflarespeedtest \
     netdata luci-app-netdata \
     frp" "kenzok8/jell" "main" "pkg"
 
+#speedtest
+UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
+UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
+
+UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "apk"
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
+
+UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
+sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
+
+UPDATE_PACKAGE "luci-theme-shadcn" "ysuolmai/luci-theme-shadcn" "main"
+
+
 # ---------------------------------------------------------------
 # 3. .config 追加包配置
 # ---------------------------------------------------------------
@@ -135,6 +149,9 @@ provided_config_lines=(
     "CONFIG_OPKG_USE_CURL=y"
     "CONFIG_PACKAGE_opkg=y"
     "CONFIG_USE_APK=n"
+
+    "CONFIG_PACKAGE_luci-app-tailscale=y"
+    "CONFIG_PACKAGE_luci-app-gecoosac=y"
 )
 
 # 故意不装的"EMMC 才合适"的重型应用（NAND 设备装不下也用不上）：
