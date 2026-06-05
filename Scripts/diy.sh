@@ -24,7 +24,7 @@ echo "[diy] 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc
 # ---------------------------------------------------------------
 keywords_to_delete=(
     "easytier" "qbittorrent" "vnt" "kmod-wireguard" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "luci-app-advancedplus" "mihomo" "nikki"
-    "smartdns" "kucat" "bootstrap" "luci-app-partexp" "luci-app-upnp"
+    "smartdns" "kucat" "bootstrap" "luci-app-partexp" "luci-app-upnp" "samba" "argon"
 )
 for keyword in "${keywords_to_delete[@]}"; do
     sed -i "/$keyword/d" ./.config
@@ -76,13 +76,25 @@ UPDATE_PACKAGE() {
 }
 
 UPDATE_PACKAGE "luci-app-poweroff" "esirplayground/luci-app-poweroff" "main"
-UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "apk"
-UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
-UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
-UPDATE_PACKAGE "luci-theme-shadcn" "ysuolmai/luci-theme-shadcn" "main"
+UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
+UPDATE_PACKAGE "openwrt-gecoosac" "ysuolmai/openwrt-gecoosac" "main"
+# gecoosac 上游作者 (kiss19776) 经常覆盖同名 release asset，PKG_HASH 跟不上
+# 把 PKG_HASH:=xxxxx 改成 PKG_HASH:=skip 跳过校验
+if [ -f ./package/openwrt-gecoosac/gecoosac/Makefile ]; then
+    sed -i 's/^PKG_HASH:=.*/PKG_HASH:=skip/' ./package/openwrt-gecoosac/gecoosac/Makefile
+    echo "[diy] openwrt-gecoosac PKG_HASH 设为 skip"
+fi
+UPDATE_PACKAGE "luci-app-openlist2" "sbwml/luci-app-openlist2" "main"
 
-
-
+#small-package
+UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
+        naiveproxy v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
+        tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
+        luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+        taskd luci-lib-xterm luci-lib-taskd luci-app-passwall2 \
+        luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
+        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
+        luci-app-nikki frp luci-app-ddns-go ddns-go docker dockerd" "kenzok8/jell" "main" "pkg"
 
 #speedtest
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
@@ -91,8 +103,13 @@ UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main
 UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "apk"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 
+UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
 UPDATE_PACKAGE "luci-app-quickfile" "https://github.com/sbwml/luci-app-quickfile" "main"
 sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bin/quickfile|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-aarch64_generic $(1)/usr/bin/quickfile|' package/luci-app-quickfile/quickfile/Makefile
+
+# bandix
+UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
+UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
 
 UPDATE_PACKAGE "luci-theme-shadcn" "ysuolmai/luci-theme-shadcn" "main"
 
@@ -131,11 +148,11 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-netspeedtest=y"
 
     # 监控（轻量流量统计）
-    "CONFIG_PACKAGE_luci-app-bandix=y"
+    #"CONFIG_PACKAGE_luci-app-bandix=y"
 
     # 主题 / 默认配置
-    "CONFIG_PACKAGE_luci-app-gecoosac=y"
-    "CONFIG_PACKAGE_luci-app-argon-config=y"
+    #"CONFIG_PACKAGE_luci-app-gecoosac=y"
+    #"CONFIG_PACKAGE_luci-app-argon-config=y"
     "CONFIG_PACKAGE_luci-theme-shadcn=y"
 
     # opkg
@@ -144,7 +161,15 @@ provided_config_lines=(
     "CONFIG_USE_APK=n"
 
     "CONFIG_PACKAGE_luci-app-tailscale=y"
-    "CONFIG_PACKAGE_luci-app-gecoosac=y"
+    
+    "CONFIG_PACKAGE_luci-app-passwall=y"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=y"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=y"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=n"
+    "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=n"
 )
 
 # 故意不装的"EMMC 才合适"的重型应用（NAND 设备装不下也用不上）：
