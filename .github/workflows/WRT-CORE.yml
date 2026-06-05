@@ -201,9 +201,24 @@ jobs:
         run: |
           cd ./wrt/
 
-          make -j$(nproc) || make -j1 V=s
+          set +e
+          make -j$(nproc)
+          BUILD_STATUS=$?
+
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            make -j1 V=s
+            BUILD_STATUS=$?
+          fi
+
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "::group::OpenWrt build logs"
+            find ./logs -type f -name "*.log" -print -exec tail -n 120 {} \; 2>/dev/null || true
+            echo "::endgroup::"
+            exit "$BUILD_STATUS"
+          fi
 
       - name: Machine Information
+        if: always()
         run: |
           cd ./wrt/
 

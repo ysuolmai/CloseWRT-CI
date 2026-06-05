@@ -202,6 +202,14 @@ if [ -f ./package/luci-app-openclash/Makefile ]; then
     sed -i '/^PKG_VERSION:=/a PKG_RELEASE:=1' ./package/luci-app-openclash/Makefile
 fi
 
+# sbwml/luci-theme-argon 的 25.12 分支依赖 wget-any，但 padavanonly 6.6
+# 源码没有这个虚拟包；改成该分支已有的 wget-ssl，避免 package/install 失败。
+ARGON_MAKEFILE=$(find ./package/ ./feeds/luci/ -maxdepth 4 -type f -path "*/luci-theme-argon/Makefile" 2>/dev/null | head -n 1)
+if [ -f "$ARGON_MAKEFILE" ] && grep -q "wget-any" "$ARGON_MAKEFILE"; then
+    sed -i 's/+wget-any/+wget-ssl/g; s/ wget-any/ wget-ssl/g' "$ARGON_MAKEFILE"
+    echo "[diy] luci-theme-argon 依赖已从 wget-any 修正为 wget-ssl"
+fi
+
 # ---------------------------------------------------------------
 # 4e. 批量修复 kenzok8/jell 包的 PKG_VERSION 格式（X.Y.Z-N → X.Y.Z + RELEASE）
 # 表现：opkg 版本比较失败，依赖不满足
