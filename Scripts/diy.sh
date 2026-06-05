@@ -280,13 +280,27 @@ echo "================================================================"
 echo "[diy] 升级 golang 工具链"
 echo "================================================================"
 WRT_DIR=$(pwd)
+GO_TMP_DIR=/tmp/openwrt-packages
 rm -rf feeds/packages/lang/golang
-git clone https://github.com/openwrt/packages --depth=1 --filter=blob:none --sparse /tmp/openwrt-packages
-cd /tmp/openwrt-packages && git sparse-checkout set lang/golang
-cp -r /tmp/openwrt-packages/lang/golang "$WRT_DIR/feeds/packages/lang/golang"
+rm -rf "$GO_TMP_DIR"
+git clone https://github.com/openwrt/packages --depth=1 --filter=blob:none --sparse "$GO_TMP_DIR"
+cd "$GO_TMP_DIR" && git sparse-checkout set lang/golang
+cp -r "$GO_TMP_DIR/lang/golang" "$WRT_DIR/feeds/packages/lang/golang"
 cd "$WRT_DIR"
-./scripts/feeds install golang
-echo "[diy] golang feed 已替换为 openwrt/packages 最新版"
+GO_DEFAULT_VERSION=$(sed -n 's/^GO_DEFAULT_VERSION:=//p' feeds/packages/lang/golang/golang-values.mk | head -n 1)
+
+# feeds install -a 已在 workflow 前面执行过；替换 feed 文件后必须刷新索引并强制重装。
+rm -rf package/feeds/packages/golang*
+./scripts/feeds update -i packages
+./scripts/feeds install -f golang "golang${GO_DEFAULT_VERSION}"
+
+# CI 会缓存 staging_dir/host*，清掉旧 Go，避免继续复用 go1.25.x 的 host 工具链。
+rm -rf staging_dir/hostpkg/lib/go-* \
+       staging_dir/hostpkg/stamp/.golang* \
+       staging_dir/hostpkg/stamp/.go* \
+       build_dir/hostpkg/golang*
+
+echo "[diy] golang feed 已替换为 openwrt/packages 最新版，默认版本：${GO_DEFAULT_VERSION}"
 
 # ---------------------------------------------------------------
 # 4d. cmake 4.0 兼容（移植自 OpenWRT-CI）
