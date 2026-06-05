@@ -24,7 +24,7 @@ echo "[diy] 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc
 # ---------------------------------------------------------------
 keywords_to_delete=(
     "easytier" "qbittorrent" "vnt" "kmod-wireguard" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "luci-app-advancedplus" "mihomo" "nikki"
-    "smartdns" "kucat" "bootstrap" "luci-app-partexp" "luci-app-upnp" "samba" "argon"
+    "smartdns" "kucat" "bootstrap" "luci-app-partexp" "luci-app-upnp" "samba"
 )
 for keyword in "${keywords_to_delete[@]}"; do
     sed -i "/$keyword/d" ./.config
