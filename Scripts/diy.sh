@@ -172,6 +172,10 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=n"
 )
 
+[[ ${WRT_CONFIG,,} == *"mediatek"* || ${WRT_CONFIG,,} == *"mtk"* || $WRT_CONFIG == *"7981"* ]] && provided_config_lines+=(
+    "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_sx_7981r128=y"
+)
+
 # 故意不装的"EMMC 才合适"的重型应用（NAND 设备装不下也用不上）：
 #   passwall / passwall2 / openclash（一个 homeproxy 已够，省 40+ MB）
 #   mosdns（adguardhome 已覆盖 DNS 过滤）
