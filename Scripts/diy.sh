@@ -13,11 +13,11 @@ echo "================================================================"
 # ---------------------------------------------------------------
 # 0. MTK 设备白名单 — 只保留指定设备
 # ---------------------------------------------------------------
-mtk_keep="\(sx_7981r128\|nokia_ea0326gmp\|cmcc_rax3000m\)=y$"
+mtk_keep="\(mediatek_7981r128\|nokia_ea0326gmp\|cmcc_rax3000m\)=y$"
 sed -i "/^CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/{
     /$mtk_keep/!d
 }" ./.config
-echo "[diy] 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc_rax3000m）"
+echo "[diy] 设备白名单已应用（保留：mediatek_7981r128 nokia_ea0326gmp cmcc_rax3000m）"
 
 # ---------------------------------------------------------------
 # 1. 移除不需要的包
@@ -173,7 +173,7 @@ provided_config_lines=(
 )
 
 [[ ${WRT_CONFIG,,} == *"mediatek"* || ${WRT_CONFIG,,} == *"mtk"* || $WRT_CONFIG == *"7981"* ]] && provided_config_lines+=(
-    "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_sx_7981r128=y"
+    "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_mediatek_7981r128=y"
 )
 
 # 故意不装的"EMMC 才合适"的重型应用（NAND 设备装不下也用不上）：
@@ -335,10 +335,27 @@ fi
 #    本仓库只产 sysupgrade.bin（sysupgrade-tar）
 # ---------------------------------------------------------------
 echo "================================================================"
-echo "[diy] sx_7981r128 设备注入"
+echo "[diy] mediatek_7981r128 upstream profile check"
 echo "================================================================"
 
+FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
+if [ -f "$FILOGIC_MK" ] && grep -q '^define Device/mediatek_7981r128' "$FILOGIC_MK"; then
+    echo "[diy] mediatek_7981r128 profile exists"
+else
+    echo "[diy] error: mediatek_7981r128 profile not found in filogic.mk"
+    exit 1
+fi
+
+DTS_FILE="./target/linux/mediatek/dts/mt7981b-mediatek-7981r128.dts"
+if [ -f "$DTS_FILE" ]; then
+    echo "[diy] mediatek_7981r128 DTS exists"
+else
+    echo "[diy] error: mediatek_7981r128 DTS not found"
+    exit 1
+fi
+
 # 5.1 复制 DTS
+if false; then
 DTS_SRC="$GITHUB_WORKSPACE/Scripts/dts/mt7981b-sx-7981r128.dts"
 if [ -f "$DTS_SRC" ]; then
     cp -f "$DTS_SRC" "./target/linux/mediatek/dts/mt7981b-sx-7981r128.dts"
@@ -446,6 +463,7 @@ exit 0
 UCI_EOF
 chmod +x "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh"
 echo "[diy] uci-defaults 98_sx_7981r128_init.sh 已注入"
+fi
 
 echo "================================================================"
 echo "[diy] 完成"
