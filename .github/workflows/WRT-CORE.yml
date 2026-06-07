@@ -200,6 +200,12 @@ jobs:
             exit 1
           fi
 
+          if ! grep -q '^CONFIG_PACKAGE_ddns-go=y' .config || ! grep -q '^CONFIG_PACKAGE_luci-app-ddns-go=y' .config; then
+            echo "::error::ddns-go packages were not selected after defconfig"
+            grep -nE 'CONFIG_PACKAGE_(ddns-go|luci-app-ddns-go|luci-i18n-ddns-go-zh-cn)' .config || true
+            exit 1
+          fi
+
           make clean -j$(nproc)
 
       - name: Download Packages

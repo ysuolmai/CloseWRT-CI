@@ -23,7 +23,7 @@ echo "[diy] 设备白名单已应用（保留：sx_7981r128 nokia_ea0326gmp cmcc
 # 1. 移除不需要的包
 # ---------------------------------------------------------------
 keywords_to_delete=(
-    "easytier" "qbittorrent" "vnt" "kmod-wireguard" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "ddns" "luci-app-advancedplus" "mihomo" "nikki"
+    "easytier" "qbittorrent" "vnt" "kmod-wireguard" "uugamebooster" "luci-app-wol" "luci-i18n-wol-zh-cn" "CONFIG_TARGET_INITRAMFS" "luci-app-advancedplus" "mihomo" "nikki"
     "smartdns" "kucat" "bootstrap" "luci-app-partexp" "luci-app-upnp" "samba"
 )
 for keyword in "${keywords_to_delete[@]}"; do
@@ -132,6 +132,7 @@ provided_config_lines=(
 
     # 内网穿透 / DDNS
     "CONFIG_PACKAGE_luci-app-frpc=y"
+    "CONFIG_PACKAGE_ddns-go=y"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
 
