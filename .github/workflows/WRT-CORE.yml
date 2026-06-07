@@ -187,7 +187,20 @@ jobs:
 
           $GITHUB_WORKSPACE/Scripts/diy.sh
 
-          make defconfig -j$(nproc) && make clean -j$(nproc)
+          rm -f tmp/.targetinfo tmp/.config-target.in
+          make prepare-tmpinfo
+          echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_sx_7981r128=y" >> .config
+
+          make defconfig -j$(nproc)
+
+          if [[ "${WRT_CONFIG,,}" == *"7981"* ]] && ! grep -q '^CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_sx_7981r128=y' .config; then
+            echo "::error::sx_7981r128 was not selected after defconfig"
+            grep -nE 'sx_7981r128|nokia_ea0326gmp|cmcc_rax3000m|mediatek_7981r128' .config || true
+            grep -n 'define Device/sx_7981r128' ./target/linux/mediatek/image/filogic.mk || true
+            exit 1
+          fi
+
+          make clean -j$(nproc)
 
       - name: Download Packages
         if: env.WRT_TEST != 'true'
