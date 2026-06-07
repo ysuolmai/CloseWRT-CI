@@ -31,6 +31,10 @@ for keyword in "${keywords_to_delete[@]}"; do
 done
 echo "[diy] 已从 .config 移除: ${keywords_to_delete[*]}"
 
+traditional_ddns_re='^(# )?CONFIG_PACKAGE_(luci-app-ddns|luci-i18n-ddns-zh-cn|ddns-scripts([_-][^= ]*)?)(=| |$)'
+sed -i -E "/$traditional_ddns_re/d" ./.config
+echo "[diy] 已从 .config 移除传统 DDNS 包（保留 ddns-go）"
+
 # ---------------------------------------------------------------
 # 2. 安装额外软件包（Packages.sh 未覆盖的部分）
 #    工作目录为 wrt/，clone 目标为 package/$REPO_NAME
