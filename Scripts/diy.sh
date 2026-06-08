@@ -410,6 +410,10 @@ uci set wireless.radio0.disabled=0
 uci set wireless.radio1.disabled=0
 uci commit wireless
 
+# 默认 LAN 管理地址
+uci set network.lan.ipaddr='192.168.1.1'
+uci commit network
+
 # wan6（2.5G 主WAN IPv6）+ wan2/wan2_6（SFP 笼）
 uci set network.wan6=interface
 uci set network.wan6.device=lan2
