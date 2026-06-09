@@ -265,9 +265,10 @@ fi
 
 # ddns-go.init 替换
 if [ -f "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init" ]; then
-    cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.init" "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init"
-    chmod +x "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init"
-    echo "[diy] ddns-go.init 已替换"
+    cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.init" ./package/ddns-go/file/ddns-go.init
+    cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.uci-default" ./package/ddns-go/file/luci-ddns-go.uci-default
+    chmod +x ./package/ddns-go/file/ddns-go.init ./package/ddns-go/file/luci-ddns-go.uci-default
+    echo "ddns-go init/defaults have been replaced successfully."
 fi
 
 # rust Makefile 修复（ci-llvm=false + patch 补充 Host/Patch define）
