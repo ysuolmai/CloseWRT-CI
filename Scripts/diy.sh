@@ -413,9 +413,23 @@ uci commit wireless
 
 # 默认 LAN 管理地址
 uci set network.lan.ipaddr='192.168.1.1'
-uci commit network
 
-# wan6（2.5G 主WAN IPv6）+ wan2/wan2_6（SFP 笼）
+# 升级保留配置时，确保 2.5G 口 lan2 仍作为主 WAN，而不是留在 br-lan
+for dev_section in $(uci show network | sed -n "s/^network\.\([^=]*\)=device$/\1/p"); do
+    if [ "$(uci -q get "network.$dev_section.name")" = "br-lan" ]; then
+        uci -q del_list "network.$dev_section.ports=lan2"
+    fi
+done
+lan_ifname_new=""
+for ifname in $(uci -q get network.lan.ifname); do
+    [ "$ifname" = "lan2" ] || lan_ifname_new="$lan_ifname_new $ifname"
+done
+[ -n "$lan_ifname_new" ] && uci set network.lan.ifname="${lan_ifname_new# }"
+
+# wan/wan6（2.5G 主WAN）+ wan2/wan2_6（SFP 笼）
+uci set network.wan=interface
+uci set network.wan.device=lan2
+uci set network.wan.proto=dhcp
 uci set network.wan6=interface
 uci set network.wan6.device=lan2
 uci set network.wan6.proto=dhcpv6
@@ -437,8 +451,10 @@ while uci get "firewall.@zone[$i]" >/dev/null 2>&1; do
     i=$((i + 1))
 done
 if [ -n "$wan_zone_idx" ]; then
-    uci add_list firewall.@zone[$wan_zone_idx].network=wan2
-    uci add_list firewall.@zone[$wan_zone_idx].network=wan2_6
+    for net in wan wan6 wan2 wan2_6; do
+        uci -q del_list "firewall.@zone[$wan_zone_idx].network=$net"
+        uci add_list "firewall.@zone[$wan_zone_idx].network=$net"
+    done
     uci commit firewall
 fi
 
