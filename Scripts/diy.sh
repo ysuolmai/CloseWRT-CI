@@ -264,10 +264,11 @@ sed -ri '/check_signature/s@^[^#]@#\&@' /etc/opkg.conf\n" \
 fi
 
 # ddns-go.init 替换
-if [ -f "./package/luci-app-ddns-go/ddns-go/file/ddns-go.init" ]; then
+if [ -d ./package/ddns-go/file ]; then
     cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.init" ./package/ddns-go/file/ddns-go.init
     cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.uci-default" ./package/ddns-go/file/luci-ddns-go.uci-default
     chmod +x ./package/ddns-go/file/ddns-go.init ./package/ddns-go/file/luci-ddns-go.uci-default
+    install -Dm644 "${GITHUB_WORKSPACE}/Scripts/ddns-go.config" "package/base-files/files/etc/config/ddns-go"
     echo "ddns-go init/defaults have been replaced successfully."
 fi
 
