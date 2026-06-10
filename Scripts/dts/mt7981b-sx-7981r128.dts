@@ -135,9 +135,9 @@
 };
 
 &mdio_bus {
-	/* MaxLinear GPY211B 2.5G PHY on switch port 5. */
+	/* Airoha EN8801S 2.5G PHY on switch port 5 */
 	phy5: phy@5 {
-		compatible = "maxlinear,gpy211", "ethernet-phy-ieee802.3-c45";
+		compatible = "ethernet-phy-id67c9.de0a";
 		reg = <5>;
 		reset-gpios = <&pio 7 GPIO_ACTIVE_LOW>;
 		reset-assert-us = <600>;
@@ -163,7 +163,7 @@
 				label = "lan1";
 			};
 
-			/* 2.5G LAN port via external MaxLinear GPY211B PHY */
+			/* 2.5G LAN port via external Airoha EN8801S PHY */
 			port@5 {
 				reg = <5>;
 				label = "lan2";
