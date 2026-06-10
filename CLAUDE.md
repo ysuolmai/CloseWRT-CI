@@ -25,7 +25,7 @@ GitHub: https://github.com/ysuolmai/CloseWRT-CI
 - **SoC**: MediaTek MT7981B (Cortex-A53 × 2)
 - **RAM**: 512MB **DDR3**（已确认）
 - **Flash**: 128MB SPIM-NAND
-- **2.5G PHY**: Airoha EN8801SC，接 MT7531 switch port@5（label: lan2）
+- **2.5G PHY**: MaxLinear GPY211B，接 MT7531 switch port@5（label: lan2）
 - **Switch**: MediaTek MT7531
 - **SFP 笼**: 接 gmac1（eth1），wan2
 - **WiFi**: MT7976（双频 Wi-Fi 6）
@@ -33,7 +33,7 @@ GitHub: https://github.com/ysuolmai/CloseWRT-CI
 ### 网口分配
 ```
 lan1  → 千兆 LAN
-lan2  → EN8801SC 2.5G → 默认 WAN（主要）
+lan2  → GPY211B 2.5G → 默认 WAN（主要）
 eth1  → SFP 笼 → wan2（次要，uci-defaults 配置）
 ```
 

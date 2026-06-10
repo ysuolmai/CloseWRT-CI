@@ -135,10 +135,9 @@
 };
 
 &mdio_bus {
-	/* Airoha EN8801SC 2.5G PHY on switch port 5.
-	 * CONFIG_AIROHA_EN8801SC_PHY=y 已内置，无需 kmod 包。 */
+	/* MaxLinear GPY211B 2.5G PHY on switch port 5. */
 	phy5: phy@5 {
-		compatible = "ethernet-phy-id67c9.de0a";
+		compatible = "maxlinear,gpy211", "ethernet-phy-ieee802.3-c45";
 		reg = <5>;
 		reset-gpios = <&pio 7 GPIO_ACTIVE_LOW>;
 		reset-assert-us = <600>;
@@ -164,7 +163,7 @@
 				label = "lan1";
 			};
 
-			/* 2.5G LAN port via external Airoha EN8801SC PHY */
+			/* 2.5G LAN port via external MaxLinear GPY211B PHY */
 			port@5 {
 				reg = <5>;
 				label = "lan2";
