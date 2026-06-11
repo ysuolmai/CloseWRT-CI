@@ -410,7 +410,27 @@ else
     echo "[diy] 02_network 已存在或文件不存在，跳过"
 fi
 
-# 5.4 uci-defaults 首次启动初始化
+# 5.4 注入 board.d/01_leds
+BOARD_LEDS="./target/linux/mediatek/filogic/base-files/etc/board.d/01_leds"
+if [ -f "$BOARD_LEDS" ] && ! grep -q 'sx,7981r128' "$BOARD_LEDS"; then
+    awk '
+        !done && /^\t\*\)$/ {
+            print "\tsx,7981r128)"
+            print "\t\tucidef_set_led_netdev \"lan\" \"LAN\" \"green:lan\" \"lan2\""
+            print "\t\tucidef_set_led_netdev \"sfp\" \"SFP\" \"green:wan\" \"eth1\" \"link\""
+            print "\t\tucidef_set_led_netdev \"wifi5g\" \"WIFI5G\" \"green:wlan-5ghz\" \"rax0\" \"tx rx\""
+            print "\t\tucidef_set_led_netdev \"wifi2g\" \"WIFI2G\" \"green:wlan-2ghz\" \"ra0\" \"tx rx\""
+            print "\t\t;;"
+            done = 1
+        }
+        { print }
+    ' "$BOARD_LEDS" > "$BOARD_LEDS.new" && mv "$BOARD_LEDS.new" "$BOARD_LEDS"
+    echo "[diy] 01_leds case 已注入"
+else
+    echo "[diy] 01_leds 已存在或文件不存在，跳过"
+fi
+
+# 5.5 uci-defaults 首次启动初始化
 UCI_DEFAULTS_DIR="./package/base-files/files/etc/uci-defaults"
 mkdir -p "$UCI_DEFAULTS_DIR"
 cat > "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh" << 'UCI_EOF'
@@ -452,20 +472,75 @@ if [ -n "$wan_zone_idx" ]; then
     uci commit firewall
 fi
 
-# LED: green:lan (GPIO 8) 绑到 2.5G 物理口 lan2
-# 实机点灯测试确认 green:lan 物理位置在 2.5G 网口旁
-uci add system led
-uci set system.@led[-1].name='led_lan2'
-uci set system.@led[-1].sysfs='green:lan'
-uci set system.@led[-1].trigger='netdev'
-uci set system.@led[-1].dev='lan2'
-uci set system.@led[-1].mode='link tx rx'
-uci commit system
-
 exit 0
 UCI_EOF
 chmod +x "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh"
 echo "[diy] uci-defaults 98_sx_7981r128_init.sh 已注入"
+
+cat > "$UCI_DEFAULTS_DIR/99_sx_7981r128_leds.sh" << 'UCI_EOF'
+#!/bin/sh
+[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = "sx,7981r128" ] || exit 0
+
+# LED defaults aligned with upstream mediatek,7981r128 mappings.
+pick_led() {
+    for led in "$@"; do
+        [ -e "/sys/class/leds/$led" ] && {
+            printf '%s' "$led"
+            return
+        }
+    done
+    printf '%s' "$1"
+}
+
+led_lan_sysfs="$(pick_led green:lan LAN)"
+led_sfp_sysfs="$(pick_led green:wan SFP)"
+led_wifi5g_sysfs="$(pick_led green:wlan-5ghz WIFI5G)"
+led_wifi2g_sysfs="$(pick_led green:wlan-2ghz WIFI2G)"
+
+while true; do
+    old_led="$(uci show system 2>/dev/null | sed -n "s/^\(system\.[^=]*\)\.name='led_lan2'$/\1/p" | head -n1)"
+    [ -n "$old_led" ] || break
+    uci -q delete "$old_led"
+done
+uci -q delete system.led_lan2
+uci -q delete system.led_lan
+uci -q delete system.led_sfp
+uci -q delete system.led_wifi5g
+uci -q delete system.led_wifi2g
+
+uci set system.led_lan=led
+uci set system.led_lan.name='LAN'
+uci set system.led_lan.sysfs="$led_lan_sysfs"
+uci set system.led_lan.trigger='netdev'
+uci set system.led_lan.dev='lan2'
+uci set system.led_lan.mode='link tx rx'
+
+uci set system.led_sfp=led
+uci set system.led_sfp.name='SFP'
+uci set system.led_sfp.sysfs="$led_sfp_sysfs"
+uci set system.led_sfp.trigger='netdev'
+uci set system.led_sfp.dev='eth1'
+uci set system.led_sfp.mode='link'
+
+uci set system.led_wifi5g=led
+uci set system.led_wifi5g.name='WIFI5G'
+uci set system.led_wifi5g.sysfs="$led_wifi5g_sysfs"
+uci set system.led_wifi5g.trigger='netdev'
+uci set system.led_wifi5g.dev='rax0'
+uci set system.led_wifi5g.mode='tx rx'
+
+uci set system.led_wifi2g=led
+uci set system.led_wifi2g.name='WIFI2G'
+uci set system.led_wifi2g.sysfs="$led_wifi2g_sysfs"
+uci set system.led_wifi2g.trigger='netdev'
+uci set system.led_wifi2g.dev='ra0'
+uci set system.led_wifi2g.mode='tx rx'
+
+uci commit system
+exit 0
+UCI_EOF
+chmod +x "$UCI_DEFAULTS_DIR/99_sx_7981r128_leds.sh"
+echo "[diy] uci-defaults 99_sx_7981r128_leds.sh 已注入"
 
 echo "================================================================"
 echo "[diy] 完成"
