@@ -354,6 +354,16 @@ else
     echo "[diy] 警告：DTS 源文件不存在，跳过"
 fi
 
+# 5.1b 注入 mediatek 6.6 内核补丁
+SX7981_PATCH_SRC="$GITHUB_WORKSPACE/Scripts/patches/mediatek-6.6"
+SX7981_PATCH_DST="./target/linux/mediatek/patches-6.6"
+if [ -d "$SX7981_PATCH_SRC" ] && [ -d "$SX7981_PATCH_DST" ]; then
+    find "$SX7981_PATCH_SRC" -maxdepth 1 -type f -name '*.patch' -exec cp -f {} "$SX7981_PATCH_DST"/ \;
+    echo "[diy] sx_7981r128 mediatek 6.6 内核补丁已复制"
+else
+    echo "[diy] sx_7981r128 mediatek 6.6 内核补丁目录不存在，跳过"
+fi
+
 # 5.2 注入 filogic.mk 设备条目
 FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
 if [ -f "$FILOGIC_MK" ] && ! grep -q '^define Device/sx_7981r128' "$FILOGIC_MK"; then
