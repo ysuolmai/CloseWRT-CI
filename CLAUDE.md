@@ -37,13 +37,22 @@ lan2  → EN8801S 2.5G → 默认 WAN（主要）
 eth1  → SFP 笼 → wan2（次要，uci-defaults 配置）
 ```
 
+### MAC 分配
+```
+factory/Factory offset 0x04 → base MAC
+lan/label_mac               → base
+lan2 主 WAN                 → base + 1
+eth1 / SFP wan2             → base + 2（uci-defaults 设置）
+```
+
 ### NAND 分区布局
 ```
 0x000000 - 0x100000  BL2        (1MB)
 0x100000 - 0x180000  u-boot-env (512KB)
 0x180000 - 0x380000  Factory    (2MB)
 0x380000 - 0x580000  FIP        (2MB)
-0x580000 - 末尾      UBI        (~122MB)
+0x580000 - 0x7780000 UBI        (114688KB raw range)
+0x7780000 - 0x8000000 reserved  (NMBM/BMT tail)
 ```
 
 ## 关键脚本说明
@@ -86,17 +95,19 @@ Combine Disks          ← easimon/maximize-build-space，合并根+/mnt → ~55
 | 3 | provided_config_lines 写入 .config |
 | 4 | 通用 Makefile 修复（cmake、getifaddr、v2ray-geodata 等） |
 | 4b | CSS 颜色修复 + uci-defaults 文件内置（ttyd、argon、dropbear、网络等） |
-| 5 | sx_7981r128 设备注入（DTS、filogic.mk、02_network、uci-defaults） |
+| 5 | sx_7981r128 设备注入（DTS、filogic.mk、02_network、01_leds、platform.sh、uci-defaults） |
 
 ### Scripts/dts/mt7981b-sx-7981r128.dts（kernel 6.6 版本）
 - 使用 `mt7981.dtsi`（**不是** mt7981b.dtsi）
 - **无** spi-cal-* 属性
 - 显式 memory 节点: `<0 0x40000000 0 0x20000000>` = 512MB
 - GPIO 头文件需显式 include
+- factory 分区提供 WiFi EEPROM 和 MAC base nvmem cell
+- gmac0 使用 base，gmac1/SFP 使用 base+2；lan2 主 WAN 由 board.d 设置为 base+1
 
 ## FIP / U-Boot
 
-**本仓库只产 `sysupgrade.bin`（sysupgrade-tar），不掺和 U-Boot/FIP/BL2。**
+**本仓库产 `sysupgrade.bin`（sysupgrade-tar）和 `factory.bin`（append-ubi），不掺和 U-Boot/FIP/BL2。**
 
 FIP / preloader 在独立仓库构建：<https://github.com/ysuolmai/UBOOT-CI>
 - 设备硬件：MT7981B + 512MB DDR3-1866（SK Hynix H5TQ4G63EFR-RDC）+ 128MB SPIM-NAND
@@ -116,6 +127,6 @@ FIP / preloader 在独立仓库构建：<https://github.com/ysuolmai/UBOOT-CI>
 ## 重要约定
 
 - **Git commit co-author**: `Co-Authored-By: bugwriter <noreply@wahlau.top>`
-- **push 冲突**：直接 force push，不 rebase
+- **push 冲突**：先 `git pull --rebase`，不要 force push，除非明确要求
 - **WireGuard 已移除**
 - **Docker/EMMC 相关不适用**（MTK SPIM-NAND 跑不了）

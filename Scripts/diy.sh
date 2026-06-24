@@ -339,7 +339,7 @@ fi
 # ---------------------------------------------------------------
 # 5. sx_7981r128 设备注入
 #    FIP / U-Boot / BL2 在独立仓库 https://github.com/ysuolmai/UBOOT-CI
-#    本仓库只产 sysupgrade.bin（sysupgrade-tar）
+#    本仓库只产 sysupgrade.bin（sysupgrade-tar）和 factory.bin（append-ubi）
 # ---------------------------------------------------------------
 echo "================================================================"
 echo "[diy] sx_7981r128 设备注入"
@@ -376,14 +376,14 @@ define Device/sx_7981r128
   DEVICE_DTS_DIR := ../dts
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-usb3 \
                      kmod-sfp kmod-i2c-gpio
-  SUPPORTED_DEVICES := sx,7981r128 mediatek,mt7981-spim-snand-7981r128
+  SUPPORTED_DEVICES := sx,7981r128 mediatek,mt7981-spim-snand-7981r128 mediatek,zhao-7981r128-d
   KERNEL_IN_UBI := 1
-  UBOOTENV_IN_UBI := 1
   BLOCKSIZE := 128k
   PAGESIZE := 2048
   IMAGE_SIZE := 114688k
   UBINIZE_OPTS := -E 5
-  IMAGES := sysupgrade.bin
+  IMAGES += factory.bin
+  IMAGE/factory.bin := append-ubi | check-size $$$$(IMAGE_SIZE)
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
 TARGET_DEVICES += sx_7981r128
@@ -397,11 +397,22 @@ fi
 BOARD_NETWORK="./target/linux/mediatek/filogic/base-files/etc/board.d/02_network"
 if [ -f "$BOARD_NETWORK" ] && ! grep -q 'sx,7981r128' "$BOARD_NETWORK"; then
     awk '
-        !done && /^\t\*\)$/ {
+        /^mediatek_setup_interfaces\(\)$/ { in_interfaces = 1; in_macs = 0 }
+        /^mediatek_setup_macs\(\)$/ { in_interfaces = 0; in_macs = 1 }
+        in_interfaces && !done_interfaces && /^\t\*\)$/ {
             print "\tsx,7981r128)"
             print "\t\tucidef_set_interfaces_lan_wan \"lan1\" \"lan2\""
             print "\t\t;;"
-            done = 1
+            done_interfaces = 1
+        }
+        in_macs && !done_macs && /^\tesac$/ {
+            print "\tsx,7981r128)"
+            print "\t\tlan_mac=$(mtd_get_mac_binary factory 0x04)"
+            print "\t\t[ -n \"$lan_mac\" ] || lan_mac=$(mtd_get_mac_binary Factory 0x04)"
+            print "\t\t[ -n \"$lan_mac\" ] && wan_mac=$(macaddr_add \"$lan_mac\" 1)"
+            print "\t\t[ -n \"$lan_mac\" ] && label_mac=$lan_mac"
+            print "\t\t;;"
+            done_macs = 1
         }
         { print }
     ' "$BOARD_NETWORK" > "$BOARD_NETWORK.new" && mv "$BOARD_NETWORK.new" "$BOARD_NETWORK"
@@ -437,6 +448,9 @@ cat > "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh" << 'UCI_EOF'
 #!/bin/sh
 [ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = "sx,7981r128" ] || exit 0
 
+. /lib/functions.sh
+. /lib/functions/system.sh
+
 # WiFi 开机启用
 uci set wireless.radio0.disabled=0
 uci set wireless.radio1.disabled=0
@@ -446,15 +460,24 @@ uci commit wireless
 uci set network.lan.ipaddr='192.168.1.1'
 
 # wan6（2.5G 主WAN IPv6）+ wan2/wan2_6（SFP 笼）
+uci set network.wan.metric=10
 uci set network.wan6=interface
 uci set network.wan6.device=lan2
 uci set network.wan6.proto=dhcpv6
+uci set network.wan6.metric=10
 uci set network.wan2=interface
 uci set network.wan2.device=eth1
 uci set network.wan2.proto=dhcp
+uci set network.wan2.metric=20
 uci set network.wan2_6=interface
 uci set network.wan2_6.device=eth1
 uci set network.wan2_6.proto=dhcpv6
+uci set network.wan2_6.metric=20
+base_mac=$(mtd_get_mac_binary factory 0x04 2>/dev/null)
+[ -n "$base_mac" ] || base_mac=$(mtd_get_mac_binary Factory 0x04 2>/dev/null)
+if [ -n "$base_mac" ]; then
+    uci set network.wan2.macaddr="$(macaddr_add "$base_mac" 2)"
+fi
 uci commit network
 
 # wan2/wan2_6 加入防火墙 WAN zone
@@ -476,6 +499,35 @@ exit 0
 UCI_EOF
 chmod +x "$UCI_DEFAULTS_DIR/98_sx_7981r128_init.sh"
 echo "[diy] uci-defaults 98_sx_7981r128_init.sh 已注入"
+
+# 5.6 注入 lib/upgrade/platform.sh
+PLATFORM_SH="./target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"
+if [ -f "$PLATFORM_SH" ] && ! grep -q 'sx,7981r128' "$PLATFORM_SH"; then
+    awk '
+        /^platform_do_upgrade\(\)/ { in_upgrade = 1; in_check = 0 }
+        /^platform_check_image\(\)/ { in_upgrade = 0; in_check = 1 }
+        in_upgrade && !done_upgrade && /^\t\*\)$/ {
+            print "\tsx,7981r128)"
+            print "\t\tCI_UBIPART=\"ubi\""
+            print "\t\tnand_do_upgrade \"$1\""
+            print "\t\t;;"
+            print
+            done_upgrade = 1
+            next
+        }
+        in_check && !done_check && /\tnradio,c8-668gl\)/ {
+            sub(/\)$/, "|\\\\")
+            print
+            print "\tsx,7981r128)"
+            done_check = 1
+            next
+        }
+        { print }
+    ' "$PLATFORM_SH" > "$PLATFORM_SH.new" && mv "$PLATFORM_SH.new" "$PLATFORM_SH"
+    echo "[diy] platform.sh sysupgrade case 已注入"
+else
+    echo "[diy] platform.sh 已存在或文件不存在，跳过"
+fi
 
 cat > "$UCI_DEFAULTS_DIR/99_sx_7981r128_leds.sh" << 'UCI_EOF'
 #!/bin/sh
