@@ -366,6 +366,8 @@ fi
 
 # 5.2 注入 filogic.mk 设备条目
 FILOGIC_MK="./target/linux/mediatek/image/filogic.mk"
+UBOOT_ENVTOOLS="./package/boot/uboot-tools/uboot-envtools/files/mediatek_filogic"
+SMP_SH="./package/mtk/applications/mtk-smp/files/smp.sh"
 if [ -f "$FILOGIC_MK" ] && ! grep -q '^define Device/sx_7981r128' "$FILOGIC_MK"; then
     cat >> "$FILOGIC_MK" << 'FILOGIC_EOF'
 
@@ -375,8 +377,9 @@ define Device/sx_7981r128
   DEVICE_DTS := mt7981b-sx-7981r128
   DEVICE_DTS_DIR := ../dts
   DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware kmod-usb3 \
-                     kmod-sfp kmod-i2c-gpio
-  SUPPORTED_DEVICES := sx,7981r128 mediatek,mt7981-spim-snand-7981r128 mediatek,zhao-7981r128-d
+                     kmod-sfp kmod-i2c-gpio uboot-envtools
+  SUPPORTED_DEVICES := sx,7981r128 mediatek,mt7981-spim-snand-7981r128 \
+                       mediatek,zhao-7981r128-d zhao,7981r128
   KERNEL_IN_UBI := 1
   BLOCKSIZE := 128k
   PAGESIZE := 2048
@@ -516,7 +519,7 @@ if [ -f "$PLATFORM_SH" ] && ! grep -q 'sx,7981r128' "$PLATFORM_SH"; then
             next
         }
         in_check && !done_check && /\tnradio,c8-668gl\)/ {
-            sub(/\)$/, "|\\\\")
+            sub(/\)$/, "|\\")
             print
             print "\tsx,7981r128)"
             done_check = 1
@@ -527,6 +530,44 @@ if [ -f "$PLATFORM_SH" ] && ! grep -q 'sx,7981r128' "$PLATFORM_SH"; then
     echo "[diy] platform.sh sysupgrade case 已注入"
 else
     echo "[diy] platform.sh 已存在或文件不存在，跳过"
+fi
+
+# 5.7 注入 uboot-envtools
+# 上游 zhao,7981r128 使用 /dev/mtd1 0x0 0x20000 0x20000，sx 同硬件沿用。
+if [ -f "$UBOOT_ENVTOOLS" ] && ! grep -q 'sx,7981r128' "$UBOOT_ENVTOOLS"; then
+    awk '
+        !done && /^[[:space:]]*zhao,7981r128\)$/ {
+            print "\tsx,7981r128|\\"
+            done = 1
+        }
+        !done && /^[[:space:]]*zbtlink,zbt-z8103ax\)$/ {
+            sub(/\)$/, "|\\")
+            print
+            print "\tsx,7981r128)"
+            done = 1
+            next
+        }
+        { print }
+    ' "$UBOOT_ENVTOOLS" > "$UBOOT_ENVTOOLS.new" && mv "$UBOOT_ENVTOOLS.new" "$UBOOT_ENVTOOLS"
+    echo "[diy] uboot-envtools case 已注入"
+else
+    echo "[diy] uboot-envtools 已存在或文件不存在，跳过"
+fi
+
+# 5.8 注入 mtk-smp
+# MTK rebase / CloseWRT 源存在该文件时，加入 7981R128 到 MT7981 WHNAT/SMP 分支。
+if [ -f "$SMP_SH" ] && ! grep -q 'sx,7981r128' "$SMP_SH"; then
+    awk '
+        !done && /^\t\*7981\*\)$/ {
+            print "\tzhao,7981r128 |\\"
+            print "\tsx,7981r128 |\\"
+            done = 1
+        }
+        { print }
+    ' "$SMP_SH" > "$SMP_SH.new" && mv "$SMP_SH.new" "$SMP_SH"
+    echo "[diy] mtk-smp case 已注入"
+else
+    echo "[diy] mtk-smp 已存在或文件不存在，跳过"
 fi
 
 cat > "$UCI_DEFAULTS_DIR/99_sx_7981r128_leds.sh" << 'UCI_EOF'
