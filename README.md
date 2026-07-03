@@ -5,7 +5,7 @@
 
 # 高质量<付费>中转站
 
-点击链接加入群聊【LiBwrt-Ai学习】：https://qm.qq.com/q/HTa7OiWNCU
+点击链接加入群聊【LiBwrt-Ai学习】：https://sc.350303.xyz/register?aff=C8X8NEL4BXX6
 该群为AI中转站群。
 
 # CloseWRT-CI
