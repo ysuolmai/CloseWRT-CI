@@ -1,3 +1,7 @@
+# 高质量<付费>中转站
+
+https://sc.350303.xyz/register?aff=C8X8NEL4BXX6
+
 # 高质量<免费>交流群
 
 点击链接加入群聊【IPQ技术讨论群】：https://qm.qq.com/q/v7nMhzB4oU
