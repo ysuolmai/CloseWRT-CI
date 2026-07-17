@@ -97,37 +97,16 @@ UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         luci-app-passwall smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
         taskd luci-lib-xterm luci-lib-taskd luci-app-passwall2 \
         luci-app-store quickstart luci-app-quickstart luci-app-cloudflarespeedtest \
-        luci-theme-argon netdata luci-app-netdata \
-        frp luci-app-ddns-go ddns-go" "kenzok8/jell" "main" "pkg"
+        luci-theme-argon netdata luci-app-netdata" "kenzok8/jell" "main" "pkg"
 
-if [ -f ./package/frp/Makefile ]; then
-    if ! grep -q 'files/$(2).init' ./package/frp/Makefile; then
-        sed -i '/$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)\/$(2) $(1)\/usr\/bin\//a \
-\	$(INSTALL_DIR) $(1)/etc/init.d/\
-\	$(INSTALL_BIN) ./files/$(2).init $(1)/etc/init.d/$(2)\
-\	$(INSTALL_DIR) $(1)/etc/config/\
-\	$(INSTALL_CONF) ./files/$(2).config $(1)/etc/config/$(2)' ./package/frp/Makefile
-    fi
-
-    for init_file in ./package/frp/files/frpc.init ./package/frp/files/frps.init; do
-        if [ -f "$init_file" ] && ! grep -q 'mkdir -p /var/etc' "$init_file"; then
-            sed -i '/local conf_file="\/var\/etc\/$NAME.ini"/a \	mkdir -p /var/etc' "$init_file"
-        fi
-    done
-
-    for config_file in ./package/frp/files/frpc.config ./package/frp/files/frps.config; do
-        [ -f "$config_file" ] || continue
-        sed -i 's/option user frpc/option user root/g; s/option group frpc/option group root/g; s/option user frps/option user root/g; s/option group frps/option group root/g' "$config_file"
-    done
-
-    echo "[diy] frp init scripts and UCI defaults will be installed into frpc/frps packages"
-fi
+UPDATE_PACKAGE "frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go \
+        luci-app-adguardhome luci-theme-shadcn luci-app-homeproxy" \
+        "ysuolmai/openwrt-packages" "main"
 
 #speedtest
 UPDATE_PACKAGE "luci-app-netspeedtest" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 UPDATE_PACKAGE "speedtest-cli" "https://github.com/sbwml/openwrt_pkgs.git" "main" "pkg"
 
-UPDATE_PACKAGE "luci-app-adguardhome" "https://github.com/ysuolmai/luci-app-adguardhome.git" "apk"
 UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 
 UPDATE_PACKAGE "openwrt-podman" "https://github.com/breeze303/openwrt-podman" "main"
@@ -137,9 +116,6 @@ sed -i 's|$(INSTALL_BIN) $(PKG_BUILD_DIR)/quickfile-$(ARCH_PACKAGES) $(1)/usr/bi
 # bandix
 UPDATE_PACKAGE "openwrt-bandix" "timsaya/openwrt-bandix" "main"
 UPDATE_PACKAGE "luci-app-bandix" "timsaya/luci-app-bandix" "main"
-
-UPDATE_PACKAGE "luci-theme-shadcn" "ysuolmai/luci-theme-shadcn" "main"
-
 
 # ---------------------------------------------------------------
 # 3. .config 追加包配置
@@ -284,15 +260,6 @@ if [ -d "./package/emortal/default-settings" ]; then
 sed -ri '/check_signature/s@^[^#]@#\&@' /etc/opkg.conf\n" \
         "package/emortal/default-settings/files/99-default-settings"
     echo "[diy] 99-distfeeds.conf 已注入 default-settings"
-fi
-
-# ddns-go.init 替换
-if [ -d ./package/ddns-go/file ]; then
-    cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.init" ./package/ddns-go/file/ddns-go.init
-    cp "${GITHUB_WORKSPACE}/Scripts/ddns-go.uci-default" ./package/ddns-go/file/luci-ddns-go.uci-default
-    chmod +x ./package/ddns-go/file/ddns-go.init ./package/ddns-go/file/luci-ddns-go.uci-default
-    install -Dm644 "${GITHUB_WORKSPACE}/Scripts/ddns-go.config" "package/base-files/files/etc/config/ddns-go"
-    echo "ddns-go init/defaults have been replaced successfully."
 fi
 
 # rust Makefile 修复（ci-llvm=false + patch 补充 Host/Patch define）
