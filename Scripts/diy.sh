@@ -100,7 +100,7 @@ UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         luci-theme-argon netdata luci-app-netdata" "kenzok8/jell" "main" "pkg"
 
 UPDATE_PACKAGE "frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go \
-        luci-app-adguardhome luci-theme-shadcn luci-app-homeproxy" \
+        luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy" \
         "ysuolmai/openwrt-packages" "main"
 
 #speedtest
