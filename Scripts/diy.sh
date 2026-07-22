@@ -99,7 +99,7 @@ UPDATE_PACKAGE "xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         luci-app-store quickstart luci-app-quickstart luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata" "kenzok8/jell" "main" "pkg"
 
-UPDATE_PACKAGE "frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go \
+UPDATE_PACKAGE "frp luci-app-frp ddns-go luci-app-ddns-go \
         luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy" \
         "ysuolmai/openwrt-packages" "main"
 
@@ -134,7 +134,7 @@ provided_config_lines=(
     "CONFIG_PACKAGE_luci-i18n-zerotier-zh-cn=y"
 
     # 内网穿透 / DDNS
-    "CONFIG_PACKAGE_luci-app-frpc=y"
+    "CONFIG_PACKAGE_luci-app-frp=y"
     "CONFIG_PACKAGE_ddns-go=y"
     "CONFIG_PACKAGE_luci-app-ddns-go=y"
     "CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y"
