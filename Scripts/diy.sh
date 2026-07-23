@@ -305,8 +305,10 @@ rm -rf package/feeds/packages/golang*
 
 # CI 会缓存 staging_dir/host*，清掉旧 Go，避免继续复用 go1.25.x 的 host 工具链。
 rm -rf staging_dir/hostpkg/lib/go-* \
+       staging_dir/hostpkg/lib/go-cross \
        staging_dir/hostpkg/stamp/.golang* \
        staging_dir/hostpkg/stamp/.go* \
+       build_dir/hostpkg/go-* \
        build_dir/hostpkg/golang*
 
 echo "[diy] golang feed 已替换为 openwrt/packages 最新版，默认版本：${GO_DEFAULT_VERSION}"
